@@ -420,16 +420,12 @@ function humanType(t,name){
     sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
     hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
     social_club:'Social / Fraternal Club',club:'Social / Fraternal Club',research_institute:'Research Institute'};
-  const fraternalPat=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|masonic|shriner|shrine|moose lodge|loyal order|kiwanis|rotary club|lions club|optimist club|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|eastern star|demolay|grotto|scottish rite|york rite|woodmen|red men|wigwam|pythian|rebekah|daughters of the nile/i;
+  const fraternalPat=/vfw|veterans of foreign|american legion|amvets|elks|eagle|mason|freemason|masonic|shriner|shrine|moose|kiwanis|rotary|lions club|optimist|odd fellow|knights of columbus|knight|red men|woodmen|eastern star|scottish rite|york rite|grotto|aerie/i;
   if(fraternalPat.test(name||'')) return 'Fraternal Organization';
   return m[a]||m[l]||a||l||'Public Building';
 }
-function classify(t,nameOverride){
-  const a=t.amenity||'',l=t.leisure||'',lu=t.landuse||'';
-  // Check name fields against fraternal pattern FIRST — many lodges have no amenity tag at all
-  const nameStr=[nameOverride,t.name,t['name:en'],t['operator'],t['brand']].filter(Boolean).join(' ');
-  const fraternalPattern=/\bvfw\b|veterans of foreign|american legion|\bamvets\b|disabled american veteran|\belks\b|elks lodge|b\.p\.o\.e|\bbpoe\b|benevolent.*order|eagles aerie|eagles lodge|fraternal order|free.*mason|\bmasonic\b|\bmason\b|masonic lodge|masonic hall|shriner|shrine club|shrine temple|moose lodge|loyal order of moose|\bkiwanis\b|rotary club|lions club|optimist club|odd fellows|independent order|\bioof\b|knights of columbus|knights of pythias|knight templar|order of the eastern star|\bdemolay\b|scottish rite|york rite|royal arch|\bwoodmen\b|red men|improved order|wigwam|pythian|\bgrotto\b|mystic order|tall cedars|white shrine|daughters of the nile|daughters of rebekah|\belk\b lodge/i;
-  if(fraternalPattern.test(nameStr)) return 'fraternal';
+function classify(t){
+  const a=t.amenity||'',l=t.leisure||'',lu=t.landuse||'',nm=(t.name||'').toLowerCase();
   if(['school','kindergarten','college'].includes(a)) return 'school';
   if(a==='place_of_worship') return 'church';
   if(a==='university'||a==='research_institute'||lu==='education') return 'university';
@@ -437,7 +433,9 @@ function classify(t,nameOverride){
   if(['stadium','sports_centre'].includes(l)||a==='stadium') return 'stadium';
   if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||a==='recreation_ground') return 'recreation';
   if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
-  if(['social_club','club','fraternity'].includes(a)) return 'fraternal';
+  if(a==='social_club') return 'fraternal';
+  const fraternalPattern=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|freemason|masonic|shriner|shrine|moose|loyal order|kiwanis|rotary|lions club|optimist|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|eastern star|rainbow girls|demolay|grotto|scottish rite|york rite|commandery|woodmen|red men|wigwam/i;
+  if(fraternalPattern.test(nm)) return 'fraternal';
   return null;
 }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -466,7 +464,7 @@ function xhrFetch(url){
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
   // Regex pattern for all major fraternal organizations
-  const fraternalRegex='VFW|Veterans of Foreign|American Legion|AMVETS|Disabled American Veteran|Elks Lodge|Elks Club|Elks|B\\.P\\.O\\.E|Eagles Aerie|Eagles Lodge|Eagles Club|Fraternal Order|Masonic Lodge|Masonic Hall|Masonic Temple|Mason|Shriner|Shrine Club|Shrine Temple|Moose Lodge|Loyal Order of Moose|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellows|Independent Order|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|DeMolay|Scottish Rite|York Rite|Royal Arch|Woodmen|Red Men|Wigwam|Pythian|Grotto|Mystic Order|Tall Cedars|White Shrine|Daughters of the Nile|Daughters of Rebekah';
+  const fraternalRegex='VFW|Veterans of Foreign|American Legion|AMVETS|Elks|B\\.P\\.O|Eagles Aerie|Eagles Lodge|Fraternal Order|Mason|Masonic|Shriner|Shrine|Moose Lodge|Loyal Order|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellow|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|Scottish Rite|York Rite|Woodmen|Red Men|DeMolay|Grotto|Wigwam';
   const parts=CATS.filter(c=>catsSet.has(c.id))
     .flatMap(c=>c.queries)
     .map(q=>{
@@ -503,7 +501,7 @@ function parseElements(elements,originLat,originLon){
     if(eLat==null||eLon==null) return;
     const key=`${name}|${Math.round(eLat*1000)}|${Math.round(eLon*1000)}`;
     if(seen.has(key)) return;seen.add(key);
-    const cat=classify(t,name);if(!cat) return;
+    const cat=classify(t);if(!cat) return;
     results.push({
       id:el.id,name,lat:eLat,lon:eLon,tags:t,cat,
       dist:haversine(originLat,originLon,eLat,eLon),
