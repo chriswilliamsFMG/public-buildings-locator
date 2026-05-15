@@ -254,11 +254,11 @@ input[type=file]{display:none}
         <div class="coord-row">
           <div class="field">
             <label>Latitude</label>
-            <input type="number" id="lat" placeholder="35.1495" step="any" inputmode="decimal">
+            <input type="text" id="lat" placeholder="e.g. 35.1495" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*">
           </div>
           <div class="field">
             <label>Longitude</label>
-            <input type="number" id="lon" placeholder="-90.049" step="any" inputmode="decimal">
+            <input type="text" id="lon" placeholder="e.g. -90.049" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*">
           </div>
         </div>
         <div class="sec-lbl">Search Radius</div>
