@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Public Buildings Locator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#181c27;--bg3:#1e2232;--surface:#2a3050;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text:#e8eaf0;--text2:#8b90a8;--text3:#5a5f78;
+  --accent:#5b8cff;--accent2:#3d6bff;--glow:rgba(91,140,255,0.12);
+  --green:#3ecf8e;--amber:#f5a623;--red:#ff5f5f;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:10px;--rl:16px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+header{height:54px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;z-index:200}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;
+  display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:17px;height:17px;fill:#fff}
+.logo-name{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:330px;min-width:280px;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.map-area{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+.s-top{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:8px}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s}
+input[type=number]:focus{border-color:var(--accent)}
+.radius-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--surface);
+  border-radius:2px;outline:none;border:none;padding:0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;
+  border-radius:50%;background:var(--accent);cursor:pointer}
+.rad-val{font-size:12px;font-family:var(--mono);color:var(--accent);min-width:54px;text-align:right}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:14px}
+.cat-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:6px 9px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:500;
+  color:var(--text2);display:flex;align-items:center;gap:6px;transition:all .15s;text-align:left}
+.cat-btn:hover{border-color:var(--border2);color:var(--text)}
+.cat-btn.on{font-weight:600;color:#fff}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.btn-search{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--r);
+  padding:10px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;
+  transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-search:hover{background:var(--accent2)}
+.btn-search:active{transform:scale(.98)}
+.btn-search:disabled{background:var(--surface);cursor:not-allowed}
+.res-hdr{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between}
+.res-count{font-size:12px;color:var(--text2)}
+.res-count strong{color:var(--text)}
+select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  color:var(--text2);font-size:11px;padding:3px 7px;font-family:var(--font);cursor:pointer}
+.res-list{flex:1;overflow-y:auto;padding:6px}
+.res-list::-webkit-scrollbar{width:3px}
+.res-list::-webkit-scrollbar-thumb{background:var(--surface);border-radius:2px}
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 11px;margin-bottom:5px;cursor:pointer;transition:all .15s}
+.card:hover{border-color:var(--border2);background:var(--surface)}
+.card.active{border-color:var(--accent);background:var(--glow)}
+.card-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.card-type{font-size:11px;margin-bottom:4px}
+.card-meta{display:flex;align-items:center;gap:8px;font-size:11px}
+.card-dist{font-family:var(--mono);color:var(--accent)}
+.card-addr{color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.map-btns{position:absolute;top:10px;right:10px;z-index:500;display:flex;flex-direction:column;gap:6px}
+.map-btn{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  padding:7px 12px;color:var(--text);font-family:var(--font);font-size:12px;
+  font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
+.map-btn:hover{background:var(--surface)}
+.statusbar{position:absolute;bottom:10px;left:10px;z-index:500;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:8px;padding:5px 12px;
+  font-size:11px;color:var(--text2);font-family:var(--mono);max-width:460px}
+.detail{position:absolute;bottom:10px;right:10px;z-index:500;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:var(--rl);padding:14px 16px;
+  min-width:240px;max-width:300px;display:none}
+.detail.show{display:block}
+.detail-name{font-size:14px;font-weight:600;margin-bottom:3px;color:var(--text)}
+.detail-type{font-size:12px;margin-bottom:10px}
+.detail-row{font-size:12px;color:var(--text2);margin-bottom:4px;word-break:break-word}
+.detail-row a{color:var(--accent);text-decoration:none}
+.detail-close{position:absolute;top:9px;right:10px;background:none;border:none;
+  color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:2px 5px}
+.detail-close:hover{color:var(--text)}
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--surface);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:180px;color:var(--text3);text-align:center;padding:16px;font-size:13px;line-height:1.7}
+.leaflet-popup-content-wrapper{background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--r);color:var(--text);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.leaflet-popup-tip{background:var(--bg2)}
+.leaflet-popup-content{margin:10px 14px;font-family:var(--font);font-size:13px}
+.leaflet-container{background:var(--bg)}
+.pop-name{font-weight:600;color:var(--text)}
+.pop-type{font-size:11px;margin-top:2px}
+.pop-dist{font-size:11px;color:var(--accent);font-family:var(--mono);margin-top:3px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+  </div>
+  <div>
+    <div class="logo-name">Public Buildings Locator</div>
+    <div class="logo-sub">OpenStreetMap · Overpass API</div>
+  </div>
+</header>
+<div class="main">
+  <div class="sidebar">
+    <div class="s-top">
+      <div class="sec-lbl">Coordinates</div>
+      <div class="coord-row">
+        <div class="field"><label>Latitude</label><input type="number" id="lat" placeholder="e.g. 35.1495" step="any"></div>
+        <div class="field"><label>Longitude</label><input type="number" id="lon" placeholder="e.g. -90.049" step="any"></div>
+      </div>
+      <div class="sec-lbl">Search Radius</div>
+      <div class="radius-row">
+        <input type="range" id="radSlider" min="1" max="40" value="8" oninput="updateRad()">
+        <div class="rad-val" id="radVal">2,000 m</div>
+      </div>
+      <div class="sec-lbl">Building Categories</div>
+      <div class="cat-grid" id="catGrid"></div>
+      <button class="btn-search" id="searchBtn" onclick="doSearch()">
+        <svg width="15" height="15" fill="white" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Search Buildings
+      </button>
+    </div>
+    <div class="res-hdr">
+      <div class="res-count" id="resCount"><strong>0</strong> results</div>
+      <select id="sortSel" onchange="renderResults()">
+        <option value="dist">Nearest first</option>
+        <option value="name">Name A–Z</option>
+        <option value="type">By type</option>
+      </select>
+    </div>
+    <div class="res-list" id="resList">
+      <div class="empty">Enter coordinates above<br>and press Search.</div>
+    </div>
+  </div>
+  <div class="map-area">
+    <div id="map"></div>
+    <div class="map-btns">
+      <button class="map-btn" onclick="fitAll()">⊞ Fit all</button>
+      <button class="map-btn" id="satBtn" onclick="toggleSat()">🛰 Satellite</button>
+    </div>
+    <div class="statusbar" id="status">Ready — enter coordinates and search.</div>
+    <div class="detail" id="detail">
+      <button class="detail-close" onclick="closeDetail()">✕</button>
+      <div class="detail-name" id="dName"></div>
+      <div class="detail-type" id="dType"></div>
+      <div id="dBody"></div>
+    </div>
+  </div>
+</div>
+<script>
+const CATS=[
+  {id:'school',    label:'Schools',      color:'#5b8cff',queries:['amenity=school','amenity=kindergarten','amenity=college']},
+  {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
+  {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
+  {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_club']},
+  {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
+  {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
+  {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
+];
+const CAT_MAP=Object.fromEntries(CATS.map(c=>[c.id,c]));
+let map,streetLayer,satLayer,useSat=false;
+let originMarker=null,radiusCircle=null;
+let allResults=[],markers=[];
+let activeCats=new Set(CATS.map(c=>c.id));
+let activeCard=null;
+
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([39.5,-98.35],4);
+  streetLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CartoDB',maxZoom:19}).addTo(map);
+  satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'© Esri',maxZoom:19});
+  L.control.zoom({position:'bottomright'}).addTo(map);
+}
+function toggleSat(){
+  useSat=!useSat;
+  if(useSat){map.removeLayer(streetLayer);satLayer.addTo(map);document.getElementById('satBtn').textContent='🗺 Street';}
+  else{map.removeLayer(satLayer);streetLayer.addTo(map);document.getElementById('satBtn').textContent='🛰 Satellite';}
+}
+function fitAll(){
+  const pts=allResults.filter(r=>activeCats.has(r.cat)).map(r=>[r.lat,r.lon]);
+  if(pts.length) map.fitBounds(pts,{padding:[40,40]});
+}
+function buildCats(){
+  const g=document.getElementById('catGrid');
+  CATS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cat-btn on';b.id='cb_'+c.id;
+    b.innerHTML=`<span class="cat-dot" style="background:${c.color}"></span>${c.label}`;
+    b.style.borderColor=c.color+'44';b.style.background=c.color+'18';b.style.color='#fff';
+    b.onclick=()=>toggleCat(c.id,b,c.color);
+    g.appendChild(b);
+  });
+}
+function toggleCat(id,btn,color){
+  if(activeCats.has(id)){
+    activeCats.delete(id);
+    btn.classList.remove('on');
+    btn.style.borderColor='var(--border)';btn.style.background='var(--bg3)';btn.style.color='var(--text2)';
+  } else {
+    activeCats.add(id);btn.classList.add('on');
+    btn.style.borderColor=color+'44';btn.style.background=color+'18';btn.style.color='#fff';
+  }
+}
+function updateRad(){
+  const m=parseInt(document.getElementById('radSlider').value)*250;
+  document.getElementById('radVal').textContent=m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
+  if(radiusCircle) radiusCircle.setRadius(m);
+}
+function getRadius(){return parseInt(document.getElementById('radSlider').value)*250;}
+function placeOrigin(lat,lon){
+  if(originMarker) map.removeLayer(originMarker);
+  if(radiusCircle) map.removeLayer(radiusCircle);
+  const icon=L.divIcon({
+    html:'<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #5b8cff;box-shadow:0 0 0 5px rgba(91,140,255,.2)"></div>',
+    iconSize:[14,14],iconAnchor:[7,7],className:''
+  });
+  originMarker=L.marker([lat,lon],{icon,zIndexOffset:1000}).addTo(map);
+  radiusCircle=L.circle([lat,lon],{radius:getRadius(),color:'#5b8cff',fillColor:'#5b8cff',fillOpacity:.05,weight:1.5,dashArray:'5 7'}).addTo(map);
+  map.setView([lat,lon],13);
+}
+function setStatus(msg,loading=false){
+  document.getElementById('status').innerHTML=loading?`<span class="spinner"></span>${msg}`:msg;
+}
+function haversine(a,b,c,d){
+  const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km';}
+function fmtAddr(t){
+  const p=[];
+  if(t['addr:housenumber']&&t['addr:street']) p.push(t['addr:housenumber']+' '+t['addr:street']);
+  else if(t['addr:street']) p.push(t['addr:street']);
+  if(t['addr:city']) p.push(t['addr:city']);
+  if(t['addr:state']) p.push(t['addr:state']);
+  if(t['addr:postcode']) p.push(t['addr:postcode']);
+  return p.join(', ');
+}
+function humanType(t){
+  const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
+  const m={school:'School',kindergarten:'Kindergarten',college:'College',
+    place_of_worship:'Place of Worship'+rel,university:'University',
+    library:'Library',fire_station:'Fire Station',police:'Police Dept.',
+    townhall:'Town Hall',courthouse:'Courthouse',post_office:'Post Office',
+    community_centre:'Community Center',stadium:'Stadium',
+    sports_centre:'Sports Center',fitness_centre:'Fitness Center',
+    sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
+    hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
+    social_club:'Social / Fraternal Club',research_institute:'Research Institute'};
+  return m[a]||m[l]||a||l||'Public Building';
+}
+function classify(t){
+  const a=t.amenity||'',l=t.leisure||'',lu=t.landuse||'',nm=(t.name||'').toLowerCase();
+  if(['school','kindergarten','college'].includes(a)) return 'school';
+  if(a==='place_of_worship') return 'church';
+  if(a==='university'||a==='research_institute'||lu==='education') return 'university';
+  if(['library','fire_station','police','townhall','courthouse','post_office','community_centre'].includes(a)) return 'civic';
+  if(['stadium','sports_centre'].includes(l)||a==='stadium') return 'stadium';
+  if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||a==='recreation_ground') return 'recreation';
+  if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
+  if(a==='social_club') return 'fraternal';
+  if(a==='community_centre'&&/vfw|mason|shrine|elks|eagles|moose|kiwanis|rotary|lions|odd fellow|knight/.test(nm)) return 'fraternal';
+  return null;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Fetch via XMLHttpRequest (works when served over HTTP/HTTPS) ───────────
+function xhrFetch(url){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('GET',url,true);
+    xhr.timeout=30000;
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){
+        try{resolve(JSON.parse(xhr.responseText));}
+        catch(e){reject(new Error('Invalid JSON response'));}
+      } else {
+        reject(new Error('HTTP '+xhr.status));
+      }
+    };
+    xhr.onerror=()=>reject(new Error('Network error'));
+    xhr.ontimeout=()=>reject(new Error('Request timed out'));
+    xhr.send();
+  });
+}
+
+async function doSearch(){
+  const lat=parseFloat(document.getElementById('lat').value);
+  const lon=parseFloat(document.getElementById('lon').value);
+  if(isNaN(lat)||isNaN(lon)){alert('Please enter valid latitude and longitude.');return;}
+  if(lat<-90||lat>90||lon<-180||lon>180){alert('Coordinates out of valid range.');return;}
+  if(activeCats.size===0){alert('Please select at least one building category.');return;}
+
+  const radius=getRadius();
+  placeOrigin(lat,lon);
+  clearMarkers();
+  allResults=[];
+  document.getElementById('searchBtn').disabled=true;
+
+  const around=`(around:${radius},${lat},${lon})`;
+  const parts=CATS.filter(c=>activeCats.has(c.id))
+    .flatMap(c=>c.queries)
+    .map(q=>{const i=q.indexOf('=');return `nwr["${q.slice(0,i)}"="${q.slice(i+1)}"]${around};`;})
+    .join('');
+  const query=`[out:json][timeout:30];(${parts});out center tags qt 500;`;
+  const encoded=encodeURIComponent(query);
+
+  const endpoints=[
+    'https://overpass-api.de/api/interpreter?data='+encoded,
+    'https://overpass.kumi.systems/api/interpreter?data='+encoded,
+    'https://overpass.openstreetmap.ru/api/interpreter?data='+encoded,
+  ];
+
+  let data=null,lastErr='';
+  for(const url of endpoints){
+    const host=new URL(url).hostname;
+    setStatus(`Querying ${host}…`,true);
+    try{
+      data=await xhrFetch(url);
+      if(data&&Array.isArray(data.elements)) break;
+      data=null;lastErr='Unexpected response format';
+    } catch(e){lastErr=e.message;data=null;}
+  }
+
+  if(!data){
+    document.getElementById('searchBtn').disabled=false;
+    setStatus('⚠ Search failed.');
+    alert(`Search failed: ${lastErr}\n\nCheck your internet connection.`);
+    return;
+  }
+
+  const seen=new Set();
+  (data.elements||[]).forEach(el=>{
+    const t=el.tags||{};
+    const name=t.name||t['name:en']||null;if(!name) return;
+    const eLat=el.lat??el.center?.lat;const eLon=el.lon??el.center?.lon;
+    if(eLat==null||eLon==null) return;
+    const key=`${name}|${Math.round(eLat*1000)}|${Math.round(eLon*1000)}`;
+    if(seen.has(key)) return;seen.add(key);
+    const cat=classify(t);if(!cat) return;
+    allResults.push({
+      id:el.id,name,lat:eLat,lon:eLon,tags:t,cat,
+      dist:haversine(lat,lon,eLat,eLon),
+      addr:fmtAddr(t),
+      phone:t.phone||t['contact:phone']||null,
+      website:t.website||t['contact:website']||null,
+      opening:t.opening_hours||null,
+    });
+  });
+
+  renderResults();placeMarkers();
+  const dl=radius>=1000?(radius/1000).toFixed(1)+' km':radius+' m';
+  setStatus(`Found ${allResults.length} buildings within ${dl}`);
+  document.getElementById('searchBtn').disabled=false;
+}
+
+function clearMarkers(){markers.forEach(m=>map.removeLayer(m));markers=[];}
+function placeMarkers(){
+  getSorted().forEach(r=>{
+    const c=CAT_MAP[r.cat].color;
+    const icon=L.divIcon({
+      html:`<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,
+      iconSize:[18,18],iconAnchor:[9,18],className:''
+    });
+    const m=L.marker([r.lat,r.lon],{icon}).addTo(map)
+      .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags))}</div><div class="pop-dist">${fmtDist(r.dist)}</div>`,{maxWidth:220});
+    m.on('click',()=>selectResult(r.id));
+    markers.push(m);r._marker=m;
+  });
+}
+function getSorted(){
+  const s=document.getElementById('sortSel').value;
+  const f=allResults.filter(r=>activeCats.has(r.cat));
+  if(s==='dist') return [...f].sort((a,b)=>a.dist-b.dist);
+  if(s==='name') return [...f].sort((a,b)=>a.name.localeCompare(b.name));
+  return [...f].sort((a,b)=>a.cat.localeCompare(b.cat)||a.dist-b.dist);
+}
+function renderResults(){
+  const sorted=getSorted();
+  document.getElementById('resCount').innerHTML=`<strong>${sorted.length}</strong> result${sorted.length!==1?'s':''}`;
+  const list=document.getElementById('resList');
+  if(!sorted.length){list.innerHTML='<div class="empty">No buildings found.<br>Try a larger radius or more categories.</div>';return;}
+  list.innerHTML=sorted.map(r=>{
+    const c=CAT_MAP[r.cat];
+    return `<div class="card" id="card_${r.id}" onclick="selectResult(${r.id})">
+      <div class="card-name">${esc(r.name)}</div>
+      <div class="card-type" style="color:${c.color}">${esc(humanType(r.tags))}</div>
+      <div class="card-meta"><span class="card-dist">${fmtDist(r.dist)}</span>${r.addr?`<span style="color:var(--text3)">·</span><span class="card-addr">${esc(r.addr)}</span>`:''}</div>
+    </div>`;
+  }).join('');
+}
+function selectResult(id){
+  const r=allResults.find(x=>x.id===id);if(!r) return;
+  if(activeCard) document.getElementById('card_'+activeCard)?.classList.remove('active');
+  activeCard=id;
+  document.getElementById('card_'+id)?.classList.add('active');
+  document.getElementById('card_'+id)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+  map.flyTo([r.lat,r.lon],16,{duration:.8});
+  if(r._marker) r._marker.openPopup();
+  showDetail(r);
+}
+function showDetail(r){
+  const c=CAT_MAP[r.cat];
+  document.getElementById('dName').textContent=r.name;
+  document.getElementById('dType').innerHTML=`<span style="color:${c.color}">${esc(humanType(r.tags))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
+  let html='';
+  if(r.addr)    html+=`<div class="detail-row">📍 ${esc(r.addr)}</div>`;
+  if(r.phone)   html+=`<div class="detail-row">📞 ${esc(r.phone)}</div>`;
+  if(r.website) html+=`<div class="detail-row">🌐 <a href="${esc(r.website)}" target="_blank">${esc(r.website)}</a></div>`;
+  if(r.opening) html+=`<div class="detail-row">🕐 ${esc(r.opening)}</div>`;
+  html+=`<div class="detail-row" style="color:var(--text3);font-family:var(--mono);font-size:11px">🗺 ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</div>`;
+  document.getElementById('dBody').innerHTML=html;
+  document.getElementById('detail').classList.add('show');
+}
+function closeDetail(){document.getElementById('detail').classList.remove('show');}
+buildCats();initMap();updateRad();
+</script>
+</body>
+</html>
