@@ -309,7 +309,8 @@ const CATS=[
   {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
   {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
   {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
-  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_club','amenity=community_centre','amenity=club','building=community_hall']},
+  {id:'fraternal', label:'Fraternal', color:'#ff5f5f',queries:['amenity=social_club','amenity=community_centre','amenity=club','amenity=fraternity','building=community_hall','name~fraternal_orgs']},"
+
   {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
   {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
   {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
@@ -433,7 +434,7 @@ function classify(t){
   if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||a==='recreation_ground') return 'recreation';
   if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
   if(a==='social_club') return 'fraternal';
-  const fraternalPattern=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|freemason|masonic|shriner|shrine|moose|loyal order|kiwanis|rotary|lions club|optimist|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|red men|woodmen|dau?ghters of the american|eastern star|rainbow girls|demolay|isis grotto|grotto|scottish rite|york rite|commandery|chapter|consistory|aerie|wigwam/i;
+  const fraternalPattern=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|freemason|masonic|shriner|shrine|moose|loyal order|kiwanis|rotary|lions club|optimist|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|eastern star|rainbow girls|demolay|grotto|scottish rite|york rite|commandery|woodmen|red men|wigwam/i;
   if(fraternalPattern.test(nm)) return 'fraternal';
   return null;
 }
@@ -462,9 +463,18 @@ function xhrFetch(url){
 // ── Build and run Overpass query ───────────────────────────────────────────
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
+  // Regex pattern for all major fraternal organizations
+  const fraternalRegex='VFW|Veterans of Foreign|American Legion|AMVETS|Elks|B\\.P\\.O|Eagles Aerie|Eagles Lodge|Fraternal Order|Mason|Masonic|Shriner|Shrine|Moose Lodge|Loyal Order|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellow|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|Scottish Rite|York Rite|Woodmen|Red Men|DeMolay|Grotto|Wigwam';
   const parts=CATS.filter(c=>catsSet.has(c.id))
     .flatMap(c=>c.queries)
-    .map(q=>{const i=q.indexOf('=');return `nwr["${q.slice(0,i)}"="${q.slice(i+1)}"]${around};`;})
+    .map(q=>{
+      const i=q.indexOf('=');
+      const k=q.slice(0,i);
+      const v=q.slice(i+1);
+      if(v==='fraternal_orgs') return `nwr["name"~"${fraternalRegex}",i]${around};`;
+      if(k==='name~') return `nwr["name"~"${v}",i]${around};`;
+      return `nwr["${k}"="${v}"]${around};`;
+    })
     .join('');
   const query=`[out:json][timeout:30];(${parts});out center tags qt 500;`;
   const encoded=encodeURIComponent(query);
