@@ -309,7 +309,7 @@ const CATS=[
   {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
   {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
   {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
-  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_club']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_club','amenity=community_centre','amenity=club','building=community_hall']},
   {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
   {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
   {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
@@ -408,7 +408,7 @@ function fmtAddr(t){
   if(t['addr:postcode']) p.push(t['addr:postcode']);
   return p.join(', ');
 }
-function humanType(t){
+function humanType(t,name){
   const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
   const m={school:'School',kindergarten:'Kindergarten',college:'College',
     place_of_worship:'Place of Worship'+rel,university:'University',
@@ -418,7 +418,9 @@ function humanType(t){
     sports_centre:'Sports Center',fitness_centre:'Fitness Center',
     sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
     hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
-    social_club:'Social / Fraternal Club',research_institute:'Research Institute'};
+    social_club:'Social / Fraternal Club',club:'Social / Fraternal Club',research_institute:'Research Institute'};
+  const fraternalPat=/vfw|veterans of foreign|american legion|amvets|elks|eagle|mason|freemason|masonic|shriner|shrine|moose|kiwanis|rotary|lions club|optimist|odd fellow|knights of columbus|knight|red men|woodmen|eastern star|scottish rite|york rite|grotto|aerie/i;
+  if(fraternalPat.test(name||'')) return 'Fraternal Organization';
   return m[a]||m[l]||a||l||'Public Building';
 }
 function classify(t){
@@ -431,7 +433,8 @@ function classify(t){
   if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||a==='recreation_ground') return 'recreation';
   if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
   if(a==='social_club') return 'fraternal';
-  if(a==='community_centre'&&/vfw|mason|shrine|elks|eagles|moose|kiwanis|rotary|lions|odd fellow|knight/.test(nm)) return 'fraternal';
+  const fraternalPattern=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|freemason|masonic|shriner|shrine|moose|loyal order|kiwanis|rotary|lions club|optimist|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|red men|woodmen|dau?ghters of the american|eastern star|rainbow girls|demolay|isis grotto|grotto|scottish rite|york rite|commandery|chapter|consistory|aerie|wigwam/i;
+  if(fraternalPattern.test(nm)) return 'fraternal';
   return null;
 }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -542,7 +545,7 @@ function placeMarkers(){
       iconSize:[18,18],iconAnchor:[9,18],className:''
     });
     const m=L.marker([r.lat,r.lon],{icon}).addTo(map)
-      .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags))}</div><div class="pop-dist">${fmtDist(r.dist)}</div>`,{maxWidth:220});
+      .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags,r.name))}</div><div class="pop-dist">${fmtDist(r.dist)}</div>`,{maxWidth:220});
     m.on('click',()=>selectResult(r.id));
     markers.push(m);r._marker=m;
   });
@@ -563,7 +566,7 @@ function renderResults(){
     const c=CAT_MAP[r.cat];
     return `<div class="card" id="card_${r.id}" onclick="selectResult(${r.id})">
       <div class="card-name">${esc(r.name)}</div>
-      <div class="card-type" style="color:${c.color}">${esc(humanType(r.tags))}</div>
+      <div class="card-type" style="color:${c.color}">${esc(humanType(r.tags,r.name))}</div>
       <div class="card-meta"><span class="card-dist">${fmtDist(r.dist)}</span>${r.addr?`<span style="color:var(--text3)">·</span><span class="card-addr">${esc(r.addr)}</span>`:''}</div>
     </div>`;
   }).join('');
@@ -581,7 +584,7 @@ function selectResult(id){
 function showDetail(r,srcLabel){
   const c=CAT_MAP[r.cat];
   document.getElementById('dName').textContent=r.name;
-  document.getElementById('dType').innerHTML=`<span style="color:${c.color}">${esc(humanType(r.tags))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
+  document.getElementById('dType').innerHTML=`<span style="color:${c.color}">${esc(humanType(r.tags,r.name))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
   let html='';
   if(srcLabel) html+=`<div class="detail-row" style="color:var(--text3);font-size:11px">📌 Near: ${esc(srcLabel)}</div>`;
   if(r.addr)    html+=`<div class="detail-row">📍 ${esc(r.addr)}</div>`;
@@ -711,7 +714,7 @@ async function doBatchSearch(){
           iconSize:[14,14],iconAnchor:[7,14],className:''
         });
         const m=L.marker([r.lat,r.lon],{icon}).addTo(map)
-          .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags))}</div><div class="pop-dist">${fmtDist(r.dist)}</div><div class="pop-src">Near: ${esc(loc.name)}</div>`,{maxWidth:240});
+          .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags,r.name))}</div><div class="pop-dist">${fmtDist(r.dist)}</div><div class="pop-src">Near: ${esc(loc.name)}</div>`,{maxWidth:240});
         m.on('click',()=>showDetail(r,loc.name));
         markers.push(m);r._marker=m;
       });
