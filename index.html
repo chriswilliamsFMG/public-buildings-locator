@@ -428,7 +428,7 @@ const CATS=[
   {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
   {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
   {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
-  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_club','amenity=community_centre','amenity=club','amenity=fraternity','building=community_hall','name~fraternal_orgs']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_centre','amenity=social_club','amenity=community_centre','amenity=club','amenity=fraternity','amenity=veterans','amenity=meeting_hall','building=community_hall','name~fraternal_orgs']},
   {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
   {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
   {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
@@ -568,7 +568,7 @@ function humanType(t,name){
     sports_centre:'Sports Center',fitness_centre:'Fitness Center',
     sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
     hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
-    social_club:'Social / Fraternal Club',club:'Social / Fraternal Club',
+    social_centre:'Social / Fraternal Club',social_club:'Social / Fraternal Club',club:'Social / Fraternal Club',veterans:'Veterans Organization',meeting_hall:'Meeting Hall',
     research_institute:'Research Institute'};
   return m[a]||m[l]||a||l||'Public Building';
 }
@@ -586,7 +586,7 @@ function classify(t,nameOverride){
   if(['stadium','sports_centre'].includes(l)||a==='stadium') return 'stadium';
   if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||a==='recreation_ground') return 'recreation';
   if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
-  if(['social_club','club','fraternity'].includes(a)) return 'fraternal';
+  if(['social_centre','social_club','club','fraternity','veterans','meeting_hall'].includes(a)) return 'fraternal';
   return null;
 }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -614,7 +614,7 @@ function xhrFetch(url){
 // ── Overpass query ─────────────────────────────────────────────────────────
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
-  const fraternalRegex='VFW|Veterans of Foreign|American Legion|AMVETS|Disabled American Veteran|Elks Lodge|Elks Club|Elks|B\\.P\\.O\\.E|Eagles Aerie|Eagles Lodge|Eagles Club|Fraternal Order|Masonic Lodge|Masonic Hall|Masonic Temple|Mason|Shriner|Shrine Club|Shrine Temple|Moose Lodge|Loyal Order of Moose|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellows|Independent Order|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|DeMolay|Scottish Rite|York Rite|Royal Arch|Woodmen|Red Men|Wigwam|Pythian|Grotto|Mystic Order|Tall Cedars|White Shrine|Daughters of the Nile|Daughters of Rebekah';
+  const fraternalRegex='VFW|Veterans of Foreign Wars|American Legion|AMVETS|DAV |Disabled American Veteran|Elks Lodge|Elks Club|B\\.P\\.O\\.E|B\\.P\\.O\\. Elks|Eagles Aerie|Eagles Lodge|Fraternal Order of Eagles|Free and Accepted Masons|Masonic Lodge|Masonic Hall|Masonic Temple|F\\.&A\\.M|F &amp; AM|Shriner|Shrine Club|Shrine Temple|Moose Lodge|Loyal Order of Moose|Kiwanis Club|Rotary Club|Lions Club|Optimist Club|Odd Fellows|Independent Order of Odd Fellows|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Order of the Eastern Star|DeMolay|Scottish Rite|York Rite|Royal Arch|Woodmen of the World|Improved Order of Red Men|Wigwam|Pythian|Grotto|Mystic Order|Tall Cedars|White Shrine|Daughters of the Nile|Daughters of Rebekah|Elks';
   const parts=CATS.filter(c=>catsSet.has(c.id))
     .flatMap(c=>c.queries)
     .map(q=>{
