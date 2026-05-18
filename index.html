@@ -444,7 +444,7 @@ function haversine(a,b,c,d){
 }
 function fmtDist(m){
   const mi=m/1609.34;
-  return mi<0.1?Math.round(m)+' m':mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';
+  return mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';
 }
 function fmtAddr(t){
   const p=[];
