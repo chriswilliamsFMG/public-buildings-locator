@@ -21,8 +21,6 @@
 html,body{height:100%;overflow:hidden}
 body{font-family:var(--font);background:var(--bg);color:var(--text);
   display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent}
-
-/* HEADER */
 header{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);
   display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:10}
 .logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;
@@ -34,15 +32,11 @@ header{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);
 .htab{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;
   border:none;color:var(--text2);background:none;transition:all .15s}
 .htab.active{color:#fff;background:var(--accent)}
-
-/* DESKTOP LAYOUT */
 .main{display:flex;flex:1;overflow:hidden}
 .sidebar{width:330px;min-width:330px;background:var(--bg2);
   border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .map-wrap{flex:1;position:relative}
 #map{width:100%;height:100%}
-
-/* PANELS */
 .panel{display:none;flex-direction:column;flex:1;overflow:hidden}
 .panel.active{display:flex}
 .s-top{padding:12px;border-bottom:1px solid var(--border);
@@ -85,8 +79,6 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;
   margin-top:6px;min-height:44px}
 .btn-secondary:active{opacity:.75}
 .btn-secondary:disabled{opacity:.4;cursor:not-allowed}
-
-/* RESULTS */
 .res-hdr{padding:8px 12px;border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .res-count{font-size:12px;color:var(--text2)}
@@ -107,8 +99,6 @@ select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;
 .card-dist{font-family:var(--mono);color:var(--accent)}
 .card-addr{color:var(--text3);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;max-width:160px}
-
-/* CSV PANEL */
 .drop-zone{border:2px dashed var(--border2);border-radius:var(--rl);padding:20px 14px;
   text-align:center;cursor:pointer;margin-bottom:2px;background:var(--bg3)}
 .drop-zone.drag{border-color:var(--accent);background:var(--glow)}
@@ -140,8 +130,6 @@ input[type=file]{display:none}
 .loc-sub-name{font-size:12px;color:var(--text);flex:1;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .loc-sub-dist{font-size:11px;font-family:var(--mono);color:var(--accent);flex-shrink:0}
-
-/* MAP OVERLAYS */
 .map-btns{position:absolute;top:10px;right:10px;z-index:500;
   display:flex;flex-direction:column;gap:6px}
 .map-btn{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
@@ -175,10 +163,7 @@ input[type=file]{display:none}
 .pop-type{font-size:11px;margin-top:2px}
 .pop-dist{font-size:11px;color:var(--accent);font-family:var(--mono);margin-top:3px}
 .pop-src{font-size:10px;color:var(--text3);margin-top:2px}
-
-/* MOBILE BOTTOM NAV */
-.bnav{display:none;height:56px;background:var(--bg2);border-top:1px solid var(--border);
-  flex-shrink:0}
+.bnav{display:none;height:56px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0}
 .bnav-inner{display:flex;height:100%}
 .bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:3px;border:none;background:none;color:var(--text3);
@@ -186,27 +171,18 @@ input[type=file]{display:none}
   min-height:56px;-webkit-user-select:none;user-select:none}
 .bnav-btn.active{color:var(--accent)}
 .bnav-btn svg{width:22px;height:22px;fill:currentColor}
-
-/* MOBILE BREAKPOINT */
 @media(max-width:700px){
   .header-tabs{display:none}
   .logo-sub{display:none}
   .bnav{display:block}
-
-  /* On mobile, use a stacked layout: map on top half, panel on bottom */
   .main{flex-direction:column}
   .sidebar{width:100%;min-width:unset;border-right:none;border-top:1px solid var(--border);
     flex:none;height:55vh;order:2}
   .map-wrap{flex:none;height:45vh;order:1}
-
-  /* When map-only view, sidebar is hidden */
   .main.map-only .sidebar{display:none}
   .main.map-only .map-wrap{height:100%}
-
-  /* When list-only view, map is hidden */  
   .main.list-only .map-wrap{display:none}
   .main.list-only .sidebar{height:100%;flex:1}
-
   .s-top{max-height:45vh}
   .detail{left:8px;right:8px;bottom:8px;max-width:none;min-width:unset}
   .statusbar{max-width:calc(100% - 110px);font-size:10px}
@@ -245,9 +221,7 @@ input[type=file]{display:none}
       <div id="dBody"></div>
     </div>
   </div>
-
   <div class="sidebar">
-    <!-- SINGLE PANEL -->
     <div class="panel active" id="panelSingle">
       <div class="s-top">
         <div class="sec-lbl">Coordinates</div>
@@ -263,8 +237,8 @@ input[type=file]{display:none}
         </div>
         <div class="sec-lbl">Search Radius</div>
         <div class="radius-row">
-          <input type="range" id="radSlider" min="1" max="40" value="8" oninput="updateRad()">
-          <div class="rad-val" id="radVal">2,000 m</div>
+          <input type="range" id="radSlider" min="1" max="10" value="2" step="1" oninput="updateRad()">
+          <div class="rad-val" id="radVal">2 miles</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGrid"></div>
@@ -285,8 +259,6 @@ input[type=file]{display:none}
         <div class="empty">Enter coordinates and press Search.</div>
       </div>
     </div>
-
-    <!-- CSV PANEL -->
     <div class="panel" id="panelCsv">
       <div class="s-top">
         <div class="sec-lbl">Upload CSV File</div>
@@ -306,8 +278,8 @@ input[type=file]{display:none}
         <div class="csv-preview" id="csvPreview" style="display:none"></div>
         <div class="sec-lbl">Search Radius (per location)</div>
         <div class="radius-row">
-          <input type="range" id="radSliderCsv" min="1" max="40" value="8" oninput="updateRadCsv()">
-          <div class="rad-val" id="radValCsv">2,000 m</div>
+          <input type="range" id="radSliderCsv" min="1" max="10" value="2" step="1" oninput="updateRadCsv()">
+          <div class="rad-val" id="radValCsv">2 miles</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGridCsv"></div>
@@ -338,7 +310,6 @@ input[type=file]{display:none}
   </div>
 </div>
 
-<!-- MOBILE BOTTOM NAV -->
 <nav class="bnav">
   <div class="bnav-inner">
     <button class="bnav-btn active" id="bn-map" onclick="mobileView('map')">
@@ -361,46 +332,26 @@ input[type=file]{display:none}
 </nav>
 
 <script>
-// ── CATEGORIES ─────────────────────────────────────────────────────────────
-// Fraternal uses TWO separate query strategies:
-// 1. Tag-based: amenity=social_centre (the correct OSM tag for VFW, Legion, etc.)
-// 2. Name-based regex: catches anything OSM mappers tagged generically
 const CATS=[
-  {id:'school',    label:'Schools',      color:'#5b8cff',
-   queries:['amenity=school','amenity=kindergarten','amenity=college']},
-  {id:'church',    label:'Churches',     color:'#a78bfa',
-   queries:['amenity=place_of_worship']},
-  {id:'civic',     label:'Civic',        color:'#3ecf8e',
-   queries:['amenity=library','amenity=fire_station','amenity=police',
-     'amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
-  {id:'stadium',   label:'Stadiums',     color:'#f5a623',
-   queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
-  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',
-   queries:['amenity=social_centre','amenity=social_club','amenity=club',
-     'amenity=community_centre','amenity=fraternity','amenity=meeting_hall',
-     'name~VFW','name~American Legion','name~Elks','name~Eagles','name~Masonic',
-     'name~Shriner','name~Moose Lodge','name~Kiwanis','name~Rotary Club',
-     'name~Lions Club','name~Odd Fellows','name~Knights of Columbus',
-     'name~Knights of Pythias','name~Eastern Star','name~Scottish Rite',
-     'name~DeMolay','name~AMVETS']},
-  {id:'university',label:'Universities', color:'#f472b6',
-   queries:['amenity=university','amenity=research_institute']},
-  {id:'recreation',label:'Recreation',   color:'#38bdf8',
-   queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
-  {id:'medical',   label:'Medical',      color:'#4ade80',
-   queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
+  {id:'school',    label:'Schools',      color:'#5b8cff',queries:['amenity=school','amenity=kindergarten','amenity=college']},
+  {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
+  {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
+  {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_centre','amenity=social_club','amenity=community_centre','amenity=club','amenity=fraternity','amenity=meeting_hall']},
+  {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
+  {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
+  {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
 ];
 const CAT_MAP=Object.fromEntries(CATS.map(c=>[c.id,c]));
 
-// ── STATE ──────────────────────────────────────────────────────────────────
 let map,streetLayer,satLayer,useSat=false;
 let originMarkers=[],radiusCircles=[],markers=[];
 let allResults=[],activeCard=null;
 let activeCats=new Set(CATS.map(c=>c.id));
 let activeCatsCsv=new Set(CATS.map(c=>c.id));
 let csvLocations=[],batchResults=[],currentTab='single';
+const isMobile=()=>window.innerWidth<=700;
 
-// ── MOBILE VIEW SWITCHING ──────────────────────────────────────────────────
 function mobileView(v){
   const main=document.getElementById('mainEl');
   main.classList.remove('map-only','list-only');
@@ -409,19 +360,20 @@ function mobileView(v){
     main.classList.add('map-only');
     document.getElementById('bn-map').classList.add('active');
     setTimeout(()=>map.invalidateSize(),50);
-  } else if(v==='results'||v==='search'||v==='csv'){
+  } else if(v==='search'){
+    switchTab('single');
     main.classList.add('list-only');
-    if(v==='search'){switchTab('single');document.getElementById('bn-search').classList.add('active');}
-    else if(v==='csv'){switchTab('csv');document.getElementById('bn-csv').classList.add('active');}
-    else{document.getElementById('bn-results').classList.add('active');}
-  } else {
-    // split view (default)
-    document.getElementById('bn-map').classList.add('active');
-    setTimeout(()=>map.invalidateSize(),50);
+    document.getElementById('bn-search').classList.add('active');
+  } else if(v==='csv'){
+    switchTab('csv');
+    main.classList.add('list-only');
+    document.getElementById('bn-csv').classList.add('active');
+  } else if(v==='results'){
+    main.classList.add('list-only');
+    document.getElementById('bn-results').classList.add('active');
   }
 }
 
-// ── TAB SWITCHING ──────────────────────────────────────────────────────────
 function switchTab(tab){
   currentTab=tab;
   document.querySelectorAll('.htab').forEach((t,i)=>
@@ -430,7 +382,6 @@ function switchTab(tab){
   document.getElementById('panelCsv').classList.toggle('active',tab==='csv');
 }
 
-// ── MAP ────────────────────────────────────────────────────────────────────
 function initMap(){
   map=L.map('map',{zoomControl:false}).setView([39.5,-98.35],4);
   streetLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -441,10 +392,8 @@ function initMap(){
 }
 function toggleSat(){
   useSat=!useSat;
-  if(useSat){map.removeLayer(streetLayer);satLayer.addTo(map);
-    document.getElementById('satBtn').textContent='🗺 Street';}
-  else{map.removeLayer(satLayer);streetLayer.addTo(map);
-    document.getElementById('satBtn').textContent='🛰 Satellite';}
+  if(useSat){map.removeLayer(streetLayer);satLayer.addTo(map);document.getElementById('satBtn').textContent='🗺 Street';}
+  else{map.removeLayer(satLayer);streetLayer.addTo(map);document.getElementById('satBtn').textContent='🛰 Satellite';}
 }
 function fitAll(){
   const pts=[...originMarkers,...markers].map(m=>m.getLatLng());
@@ -456,7 +405,6 @@ function clearAll(){
   radiusCircles.forEach(c=>map.removeLayer(c));radiusCircles=[];
 }
 
-// ── CATEGORY BUTTONS ───────────────────────────────────────────────────────
 function buildCatGrid(id,set){
   const g=document.getElementById(id);
   CATS.forEach(c=>{
@@ -464,8 +412,7 @@ function buildCatGrid(id,set){
     b.className='cat-btn on';
     b.innerHTML=`<span class="cat-dot" style="background:${c.color}"></span>${c.label}`;
     b.style.cssText=`border-color:${c.color}44;background:${c.color}18;color:#fff`;
-    // Use touchend + click for maximum compatibility
-    function toggle(){
+    b.addEventListener('click',()=>{
       if(set.has(c.id)){
         set.delete(c.id);b.classList.remove('on');
         b.style.cssText='border-color:var(--border);background:var(--bg3);color:var(--text2)';
@@ -473,34 +420,32 @@ function buildCatGrid(id,set){
         set.add(c.id);b.classList.add('on');
         b.style.cssText=`border-color:${c.color}44;background:${c.color}18;color:#fff`;
       }
-    }
-    b.addEventListener('click',toggle);
+    });
     g.appendChild(b);
   });
 }
 
-// ── RADIUS ─────────────────────────────────────────────────────────────────
+function miToM(mi){return mi*1609.34;}
+function fmtMiles(mi){return mi===1?'1 mile':mi+' miles';}
 function updateRad(){
-  const m=getRadius('radSlider');
-  document.getElementById('radVal').textContent=
-    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
+  const mi=parseFloat(document.getElementById('radSlider').value);
+  document.getElementById('radVal').textContent=fmtMiles(mi);
 }
 function updateRadCsv(){
-  const m=getRadius('radSliderCsv');
-  document.getElementById('radValCsv').textContent=
-    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
+  const mi=parseFloat(document.getElementById('radSliderCsv').value);
+  document.getElementById('radValCsv').textContent=fmtMiles(mi);
 }
-function getRadius(id='radSlider'){
-  return parseInt(document.getElementById(id).value)*250;
-}
+function getRadius(id='radSlider'){return miToM(parseFloat(document.getElementById(id).value));}
 
-// ── HELPERS ────────────────────────────────────────────────────────────────
 function haversine(a,b,c,d){
   const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180;
   const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km';}
+function fmtDist(m){
+  const mi=m/1609.34;
+  return mi<0.1?Math.round(m)+' m':mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';
+}
 function fmtAddr(t){
   const p=[];
   if(t['addr:housenumber']&&t['addr:street']) p.push(t['addr:housenumber']+' '+t['addr:street']);
@@ -511,8 +456,7 @@ function fmtAddr(t){
   return p.join(', ');
 }
 
-// Fraternal name pattern — used both to classify and label results
-const FRAT_PAT=/\bvfw\b|veterans of foreign|american legion|\bamvets\b|disabled american veteran|\belks?\b|b\.p\.o\.e|eagles aerie|eagles lodge|fraternal order|free.{0,5}mason|\bmasonic\b|shriner|shrine (club|temple|hall)|moose lodge|loyal order of moose|\bkiwanis\b|rotary club|lions club|optimist club|odd fellows|\bioof\b|knights of columbus|knights of pythias|knight templar|eastern star|\bdemolay\b|scottish rite|york rite|royal arch|\bwoodmen\b|improved order of red men|\bpythian\b|\bgrotto\b|daughters of the nile|daughters of rebekah|tall cedars|white shrine/i;
+const FRAT_PAT=/elk|mason|masonic|\bvfw\b|v\.f\.w|knights of columbus|k of c|\bmoose\b|4-h/i;
 
 function humanType(t,name){
   const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
@@ -527,15 +471,13 @@ function humanType(t,name){
     sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
     hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
     social_centre:'Social / Fraternal Club',social_club:'Social / Fraternal Club',
-    club:'Club',fraternity:'Fraternal Organization',
-    meeting_hall:'Meeting Hall',research_institute:'Research Institute'};
+    club:'Club',fraternity:'Fraternal Organization',meeting_hall:'Meeting Hall',
+    research_institute:'Research Institute'};
   return m[a]||m[l]||a||l||'Public Building';
 }
 
-// Classify — fraternal name check FIRST so buildings without amenity tags are caught
 function classify(t,name){
   const a=t.amenity||'',l=t.leisure||'',lu=t.landuse||'';
-  // Check name against fraternal pattern before anything else
   const nameStr=[name,t.name,t['name:en'],t.operator,t.brand].filter(Boolean).join(' ');
   if(FRAT_PAT.test(nameStr)) return 'fraternal';
   if(['school','kindergarten','college'].includes(a)) return 'school';
@@ -552,15 +494,11 @@ function classify(t,name){
   return null;
 }
 
-function esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function setStatus(msg,loading=false){
-  document.getElementById('status').innerHTML=
-    loading?`<span class="spinner"></span>${msg}`:msg;
+  document.getElementById('status').innerHTML=loading?`<span class="spinner"></span>${msg}`:msg;
 }
 
-// ── XHR FETCH ──────────────────────────────────────────────────────────────
 function xhrFetch(url){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
@@ -577,35 +515,21 @@ function xhrFetch(url){
   });
 }
 
-// ── OVERPASS QUERY ─────────────────────────────────────────────────────────
-// For fraternal name~ queries we use Overpass regex syntax: ["name"~"pattern",i]
-// This is separate from the tag-based queries and runs as additional union members
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
-  const tagParts=[];   // amenity=X style
-  const nameParts=[];  // name~X style — collected and combined into ONE regex query
-
+  const parts=[];
   CATS.filter(c=>catsSet.has(c.id)).forEach(c=>{
     c.queries.forEach(q=>{
       const i=q.indexOf('=');
-      const k=q.slice(0,i);
-      const v=q.slice(i+1);
-      if(k==='name~'){
-        // Collect all name terms for one combined regex query
-        nameParts.push(v.replace(/[.*+?^${}()|[\]\\]/g,s=>'\\'+s));
-      } else {
-        tagParts.push(`nwr["${k}"="${v}"]${around};`);
-      }
+      const k=q.slice(0,i),v=q.slice(i+1);
+      parts.push(`nwr["${k}"="${v}"]${around};`);
     });
   });
-
-  // Add one combined name-regex query if any name~ terms were collected
-  if(nameParts.length>0){
-    const regex=nameParts.join('|');
-    tagParts.push(`nwr["name"~"${regex}",i]${around};`);
+  // Fraternal name search — find any building whose name contains these words
+  if(catsSet.has('fraternal')){
+    parts.push(`nwr["name"~"Elk|Mason|Masonic|VFW|V\\.F\\.W|Knights of Columbus|K of C|Moose|4-H",i]${around};`);
   }
-
-  const query=`[out:json][timeout:30];(${tagParts.join('')});out center tags qt 500;`;
+  const query=`[out:json][timeout:25];(${parts.join('')});out center tags qt 300;`;
   const encoded=encodeURIComponent(query);
   const endpoints=[
     'https://overpass-api.de/api/interpreter?data='+encoded,
@@ -618,7 +542,7 @@ async function queryOverpass(lat,lon,radius,catsSet){
       if(data&&Array.isArray(data.elements)) return data.elements;
     } catch(e){}
   }
-  throw new Error('All Overpass endpoints failed');
+  throw new Error('All Overpass endpoints failed. Check your internet connection.');
 }
 
 function parseElements(elements,originLat,originLon){
@@ -633,8 +557,7 @@ function parseElements(elements,originLat,originLon){
     if(seen.has(key)) return;seen.add(key);
     const cat=classify(t,name);if(!cat) return;
     results.push({id:el.id,name,lat:eLat,lon:eLon,tags:t,cat,
-      dist:haversine(originLat,originLon,eLat,eLon),
-      addr:fmtAddr(t),
+      dist:haversine(originLat,originLon,eLat,eLon),addr:fmtAddr(t),
       phone:t.phone||t['contact:phone']||null,
       website:t.website||t['contact:website']||null,
       opening:t.opening_hours||null});
@@ -642,18 +565,15 @@ function parseElements(elements,originLat,originLon){
   return results;
 }
 
-// ── SINGLE SEARCH ──────────────────────────────────────────────────────────
 async function doSearch(){
   const lat=parseFloat(document.getElementById('lat').value);
   const lon=parseFloat(document.getElementById('lon').value);
   if(isNaN(lat)||isNaN(lon)){alert('Please enter valid latitude and longitude.');return;}
   if(lat<-90||lat>90||lon<-180||lon>180){alert('Coordinates out of valid range.');return;}
   if(activeCats.size===0){alert('Please select at least one category.');return;}
-
   const radius=getRadius('radSlider');
   clearAll();allResults=[];
   document.getElementById('searchBtn').disabled=true;
-
   const oIcon=L.divIcon({
     html:'<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #5b8cff;box-shadow:0 0 0 5px rgba(91,140,255,.2)"></div>',
     iconSize:[14,14],iconAnchor:[7,7],className:''});
@@ -662,17 +582,16 @@ async function doSearch(){
     fillOpacity:.05,weight:1.5,dashArray:'5 7'}).addTo(map));
   map.setView([lat,lon],13);
   setTimeout(()=>map.invalidateSize(),100);
-
   setStatus('Querying Overpass API…',true);
   try{
     const elements=await queryOverpass(lat,lon,radius,activeCats);
     allResults=parseElements(elements,lat,lon);
     renderResults();placeMarkers();
-    const dl=radius>=1000?(radius/1000).toFixed(1)+' km':radius+' m';
-    setStatus(`Found ${allResults.length} buildings within ${dl}`);
+    const mi=parseFloat(document.getElementById('radSlider').value);
+    setStatus(`Found ${allResults.length} buildings within ${fmtMiles(mi)}`);
   } catch(e){
     setStatus('⚠ Search failed.');
-    alert('Search failed: '+e.message+'\n\nCheck your internet connection.');
+    alert('Search failed:\n\n'+e.message);
   }
   document.getElementById('searchBtn').disabled=false;
 }
@@ -693,7 +612,6 @@ function placeMarkers(){
     markers.push(m);r._marker=m;
   });
 }
-
 function getSorted(){
   const s=document.getElementById('sortSel').value;
   const f=allResults.filter(r=>activeCats.has(r.cat));
@@ -701,29 +619,20 @@ function getSorted(){
   if(s==='name') return [...f].sort((a,b)=>a.name.localeCompare(b.name));
   return [...f].sort((a,b)=>a.cat.localeCompare(b.cat)||a.dist-b.dist);
 }
-
 function renderResults(){
   const sorted=getSorted();
-  document.getElementById('resCount').innerHTML=
-    `<strong>${sorted.length}</strong> result${sorted.length!==1?'s':''}`;
+  document.getElementById('resCount').innerHTML=`<strong>${sorted.length}</strong> result${sorted.length!==1?'s':''}`;
   const list=document.getElementById('resList');
-  if(!sorted.length){
-    list.innerHTML='<div class="empty">No buildings found.<br>Try a larger radius.</div>';
-    return;
-  }
+  if(!sorted.length){list.innerHTML='<div class="empty">No buildings found.<br>Try a larger radius.</div>';return;}
   list.innerHTML=sorted.map(r=>{
     const c=CAT_MAP[r.cat];
     return `<div class="card" id="card_${r.id}" onclick="selectResult(${r.id})">
       <div class="card-name">${esc(r.name)}</div>
       <div class="card-type" style="color:${c.color}">${esc(humanType(r.tags,r.name))}</div>
-      <div class="card-meta">
-        <span class="card-dist">${fmtDist(r.dist)}</span>
-        ${r.addr?`<span style="color:var(--text3)">·</span><span class="card-addr">${esc(r.addr)}</span>`:''}
-      </div>
+      <div class="card-meta"><span class="card-dist">${fmtDist(r.dist)}</span>${r.addr?`<span style="color:var(--text3)">·</span><span class="card-addr">${esc(r.addr)}</span>`:''}</div>
     </div>`;
   }).join('');
 }
-
 function selectResult(id){
   const r=allResults.find(x=>x.id===id);if(!r) return;
   if(activeCard) document.getElementById('card_'+activeCard)?.classList.remove('active');
@@ -734,12 +643,10 @@ function selectResult(id){
   if(r._marker) r._marker.openPopup();
   showDetail(r);
 }
-
 function showDetail(r,srcLabel){
   const c=CAT_MAP[r.cat];
   document.getElementById('dName').textContent=r.name;
-  document.getElementById('dType').innerHTML=
-    `<span style="color:${c.color}">${esc(humanType(r.tags,r.name))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
+  document.getElementById('dType').innerHTML=`<span style="color:${c.color}">${esc(humanType(r.tags,r.name))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
   let html='';
   if(srcLabel) html+=`<div class="detail-row" style="color:var(--text3);font-size:11px">📌 Near: ${esc(srcLabel)}</div>`;
   if(r.addr)    html+=`<div class="detail-row">📍 ${esc(r.addr)}</div>`;
@@ -752,7 +659,6 @@ function showDetail(r,srcLabel){
 }
 function closeDetail(){document.getElementById('detail').classList.remove('show');}
 
-// ── CSV PARSING ────────────────────────────────────────────────────────────
 function parseCSV(text){
   const lines=text.trim().split(/\r?\n/);
   if(lines.length<2) throw new Error('CSV needs a header row and at least one data row.');
@@ -786,8 +692,7 @@ function parseCsvRow(line){
 }
 function handleFileSelect(e){const f=e.target.files[0];if(f) loadCsvFile(f);}
 function handleDrop(e){
-  e.preventDefault();
-  document.getElementById('dropZone').classList.remove('drag');
+  e.preventDefault();document.getElementById('dropZone').classList.remove('drag');
   const f=e.dataTransfer.files[0];
   if(f&&(f.name.endsWith('.csv')||f.name.endsWith('.txt'))) loadCsvFile(f);
   else alert('Please drop a .csv file.');
@@ -810,7 +715,6 @@ function loadCsvFile(file){
   reader.readAsText(file);
 }
 
-// ── BATCH SEARCH ───────────────────────────────────────────────────────────
 async function doBatchSearch(){
   if(!csvLocations.length){alert('Please upload a CSV file first.');return;}
   if(activeCatsCsv.size===0){alert('Please select at least one category.');return;}
@@ -818,10 +722,10 @@ async function doBatchSearch(){
   clearAll();batchResults=[];
   document.getElementById('csvSearchBtn').disabled=true;
   document.getElementById('exportBtn').disabled=true;
-  const progressWrap=document.getElementById('progressWrap');
-  const progressBar=document.getElementById('progressBar');
-  const progressLbl=document.getElementById('progressLbl');
-  progressWrap.style.display='block';
+  const pw=document.getElementById('progressWrap');
+  const pb=document.getElementById('progressBar');
+  const pl=document.getElementById('progressLbl');
+  pw.style.display='block';
   const oIcon=L.divIcon({
     html:'<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #5b8cff;box-shadow:0 0 0 3px rgba(91,140,255,.2)"></div>',
     iconSize:[10,10],iconAnchor:[5,5],className:''});
@@ -833,14 +737,13 @@ async function doBatchSearch(){
   let totalBuildings=0;
   for(let i=0;i<csvLocations.length;i++){
     const loc=csvLocations[i];
-    progressBar.style.width=Math.round((i/csvLocations.length)*100)+'%';
-    progressLbl.textContent=`${i+1} / ${csvLocations.length} — ${loc.name}`;
+    pb.style.width=Math.round((i/csvLocations.length)*100)+'%';
+    pl.textContent=`${i+1} / ${csvLocations.length} — ${loc.name}`;
     setStatus(`Searching ${i+1}/${csvLocations.length}: ${loc.name}…`,true);
     try{
       const elements=await queryOverpass(loc.lat,loc.lon,radius,activeCatsCsv);
       const results=parseElements(elements,loc.lat,loc.lon);
-      batchResults.push({loc,results});
-      totalBuildings+=results.length;
+      batchResults.push({loc,results});totalBuildings+=results.length;
       results.forEach(r=>{
         const c=CAT_MAP[r.cat].color;
         const m=L.marker([r.lat,r.lon],{icon:makeMarkerIcon(c,14)}).addTo(map)
@@ -851,9 +754,10 @@ async function doBatchSearch(){
     } catch(e){batchResults.push({loc,results:[],error:e.message});}
     if(i<csvLocations.length-1) await sleep(1200);
   }
-  progressBar.style.width='100%';
-  progressLbl.textContent=`Complete — ${csvLocations.length} locations searched`;
-  setStatus(`Done: ${totalBuildings} buildings found across ${csvLocations.length} locations`);
+  pb.style.width='100%';
+  pl.textContent=`Complete — ${csvLocations.length} locations searched`;
+  const bmi=parseFloat(document.getElementById('radSliderCsv').value);
+  setStatus(`Done: ${totalBuildings} buildings found within ${fmtMiles(bmi)} of ${csvLocations.length} locations`);
   document.getElementById('csvResCount').innerHTML=`<strong>${totalBuildings}</strong> buildings found`;
   renderBatchResults();
   document.getElementById('csvSearchBtn').disabled=false;
@@ -861,7 +765,6 @@ async function doBatchSearch(){
 }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-// ── BATCH RESULTS ──────────────────────────────────────────────────────────
 function renderBatchResults(){
   const list=document.getElementById('csvResList');
   if(!batchResults.length){list.innerHTML='<div class="empty">No results yet.</div>';return;}
@@ -919,18 +822,17 @@ function zoomTo(lat,lon,id,locName){
   }
 }
 
-// ── CSV EXPORT ─────────────────────────────────────────────────────────────
 function exportCsv(){
   if(!batchResults.length){alert('No results to export.');return;}
   const rows=[['source_name','source_lat','source_lon','building_name','type',
-    'distance_m','address','phone','website','opening_hours','building_lat','building_lon']];
+    'distance_mi','address','phone','website','opening_hours','building_lat','building_lon']];
   batchResults.forEach(br=>{
     if(!br.results.length){
       rows.push([br.loc.name,br.loc.lat,br.loc.lon,'(no results)','','','','','','','','']);
     } else {
       br.results.forEach(r=>{
         rows.push([br.loc.name,br.loc.lat,br.loc.lon,r.name,humanType(r.tags,r.name),
-          Math.round(r.dist),r.addr||'',r.phone||'',r.website||'',r.opening||'',r.lat,r.lon]);
+          (r.dist/1609.34).toFixed(2),r.addr||'',r.phone||'',r.website||'',r.opening||'',r.lat,r.lon]);
       });
     }
   });
@@ -942,7 +844,6 @@ function exportCsv(){
   a.click();
 }
 
-// ── BOOT ───────────────────────────────────────────────────────────────────
 buildCatGrid('catGrid',activeCats);
 buildCatGrid('catGridCsv',activeCatsCsv);
 initMap();
