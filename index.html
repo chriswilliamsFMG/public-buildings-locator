@@ -263,8 +263,8 @@ input[type=file]{display:none}
         </div>
         <div class="sec-lbl">Search Radius</div>
         <div class="radius-row">
-          <input type="range" id="radSlider" min="1" max="10" value="2" step="1" oninput="updateRad()">
-          <div class="rad-val" id="radVal">2 miles</div>
+          <input type="range" id="radSlider" min="1" max="40" value="8" oninput="updateRad()">
+          <div class="rad-val" id="radVal">2,000 m</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGrid"></div>
@@ -306,8 +306,8 @@ input[type=file]{display:none}
         <div class="csv-preview" id="csvPreview" style="display:none"></div>
         <div class="sec-lbl">Search Radius (per location)</div>
         <div class="radius-row">
-          <input type="range" id="radSliderCsv" min="1" max="10" value="2" step="1" oninput="updateRadCsv()">
-          <div class="rad-val" id="radValCsv">2 miles</div>
+          <input type="range" id="radSliderCsv" min="1" max="40" value="8" oninput="updateRadCsv()">
+          <div class="rad-val" id="radValCsv">2,000 m</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGridCsv"></div>
@@ -480,18 +480,18 @@ function buildCatGrid(id,set){
 }
 
 // ── RADIUS ─────────────────────────────────────────────────────────────────
-function miToM(mi){return mi*1609.34;}
-function fmtMiles(mi){return mi===1?'1 mile':mi+' miles';}
 function updateRad(){
-  const mi=parseFloat(document.getElementById('radSlider').value);
-  document.getElementById('radVal').textContent=fmtMiles(mi);
+  const m=getRadius('radSlider');
+  document.getElementById('radVal').textContent=
+    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
 }
 function updateRadCsv(){
-  const mi=parseFloat(document.getElementById('radSliderCsv').value);
-  document.getElementById('radValCsv').textContent=fmtMiles(mi);
+  const m=getRadius('radSliderCsv');
+  document.getElementById('radValCsv').textContent=
+    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
 }
 function getRadius(id='radSlider'){
-  return miToM(parseFloat(document.getElementById(id).value));
+  return parseInt(document.getElementById(id).value)*250;
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -500,7 +500,7 @@ function haversine(a,b,c,d){
   const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function fmtDist(m){const mi=m/1609.34;return mi<0.1?Math.round(m)+' m':mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';}
+function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km';}
 function fmtAddr(t){
   const p=[];
   if(t['addr:housenumber']&&t['addr:street']) p.push(t['addr:housenumber']+' '+t['addr:street']);
@@ -512,7 +512,7 @@ function fmtAddr(t){
 }
 
 // Fraternal name pattern — used both to classify and label results
-const FRAT_PAT=/\belks?\b|\bmason\b|\bmasonic\b|\bvfw\b|v\.f\.w\.|knights of columbus|\bk of c\b|\bmoose\b|\b4-h\b/i;
+const FRAT_PAT=/\bvfw\b|veterans of foreign|american legion|\bamvets\b|disabled american veteran|\belks?\b|b\.p\.o\.e|eagles aerie|eagles lodge|fraternal order|free.{0,5}mason|\bmasonic\b|shriner|shrine (club|temple|hall)|moose lodge|loyal order of moose|\bkiwanis\b|rotary club|lions club|optimist club|odd fellows|\bioof\b|knights of columbus|knights of pythias|knight templar|eastern star|\bdemolay\b|scottish rite|york rite|royal arch|\bwoodmen\b|improved order of red men|\bpythian\b|\bgrotto\b|daughters of the nile|daughters of rebekah|tall cedars|white shrine/i;
 
 function humanType(t,name){
   const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
@@ -560,71 +560,65 @@ function setStatus(msg,loading=false){
     loading?`<span class="spinner"></span>${msg}`:msg;
 }
 
-// ── XHR FETCH — uses POST to avoid URL length limits ──────────────────────
-function xhrPost(endpoint, queryStr){
+// ── XHR FETCH ──────────────────────────────────────────────────────────────
+function xhrFetch(url){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    xhr.open('POST', endpoint, true);
-    xhr.timeout=30000;
-    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+    xhr.open('GET',url,true);xhr.timeout=35000;
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
         try{resolve(JSON.parse(xhr.responseText));}
-        catch(e){reject(new Error('Bad JSON from '+endpoint));}
-      } else {
-        reject(new Error('HTTP '+xhr.status+' from '+endpoint));
-      }
+        catch(e){reject(new Error('Invalid JSON'));}
+      } else reject(new Error('HTTP '+xhr.status));
     };
-    xhr.onerror=()=>reject(new Error('Network error reaching '+endpoint));
-    xhr.ontimeout=()=>reject(new Error('Timeout from '+endpoint));
-    xhr.send('data='+encodeURIComponent(queryStr));
+    xhr.onerror=()=>reject(new Error('Network error'));
+    xhr.ontimeout=()=>reject(new Error('Timed out'));
+    xhr.send();
   });
 }
 
 // ── OVERPASS QUERY ─────────────────────────────────────────────────────────
+// For fraternal name~ queries we use Overpass regex syntax: ["name"~"pattern",i]
+// This is separate from the tag-based queries and runs as additional union members
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
-  const parts=[];
+  const tagParts=[];   // amenity=X style
+  const nameParts=[];  // name~X style — collected and combined into ONE regex query
 
-  // node+way only (skip relations) — much faster than nwr
   CATS.filter(c=>catsSet.has(c.id)).forEach(c=>{
     c.queries.forEach(q=>{
       const i=q.indexOf('=');
-      const k=q.slice(0,i), v=q.slice(i+1);
-      if(k!=='name~'){
-        parts.push(`node["${k}"="${v}"]${around};`);
-        parts.push(`way["${k}"="${v}"]${around};`);
+      const k=q.slice(0,i);
+      const v=q.slice(i+1);
+      if(k==='name~'){
+        // Collect all name terms for one combined regex query
+        nameParts.push(v.replace(/[.*+?^${}()|[\]\\]/g,s=>'\\'+s));
+      } else {
+        tagParts.push(`nwr["${k}"="${v}"]${around};`);
       }
     });
   });
 
-  // Fraternal name-regex — short keywords only for speed
-  if(catsSet.has('fraternal')){
-    const fr='Elk|Mason|Masonic|VFW|V\\.F\\.W|Knights of Columbus|K of C|Moose|4-H';
-    parts.push(`node["name"~"${fr}",i]${around};`);
-    parts.push(`way["name"~"${fr}",i]${around};`);
+  // Add one combined name-regex query if any name~ terms were collected
+  if(nameParts.length>0){
+    const regex=nameParts.join('|');
+    tagParts.push(`nwr["name"~"${regex}",i]${around};`);
   }
 
-  const query=`[out:json][timeout:25][maxsize:16777216];(${parts.join('')});out center tags qt 200;`;
-
+  const query=`[out:json][timeout:30];(${tagParts.join('')});out center tags qt 500;`;
+  const encoded=encodeURIComponent(query);
   const endpoints=[
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.openstreetmap.ru/api/interpreter',
+    'https://overpass-api.de/api/interpreter?data='+encoded,
+    'https://overpass.kumi.systems/api/interpreter?data='+encoded,
+    'https://overpass.openstreetmap.ru/api/interpreter?data='+encoded,
   ];
-
-  let lastErr='';
-  for(const ep of endpoints){
+  for(const url of endpoints){
     try{
-      setStatus(`Querying ${ep.split('/')[2]}…`,true);
-      const data=await xhrPost(ep, query);
+      const data=await xhrFetch(url);
       if(data&&Array.isArray(data.elements)) return data.elements;
-      lastErr='Unexpected response format';
-    } catch(e){
-      lastErr=e.message;
-    }
+    } catch(e){}
   }
-  throw new Error(lastErr||'All Overpass endpoints failed');
+  throw new Error('All Overpass endpoints failed');
 }
 
 function parseElements(elements,originLat,originLon){
@@ -674,12 +668,11 @@ async function doSearch(){
     const elements=await queryOverpass(lat,lon,radius,activeCats);
     allResults=parseElements(elements,lat,lon);
     renderResults();placeMarkers();
-    const mi=parseFloat(document.getElementById('radSlider').value);
-    const dl=fmtMiles(mi);
+    const dl=radius>=1000?(radius/1000).toFixed(1)+' km':radius+' m';
     setStatus(`Found ${allResults.length} buildings within ${dl}`);
   } catch(e){
-    setStatus('⚠ Search failed: '+e.message);
-    alert('Search failed:\n\n'+e.message+'\n\nTry reducing the search radius or deselecting some categories.');
+    setStatus('⚠ Search failed.');
+    alert('Search failed: '+e.message+'\n\nCheck your internet connection.');
   }
   document.getElementById('searchBtn').disabled=false;
 }
@@ -860,8 +853,7 @@ async function doBatchSearch(){
   }
   progressBar.style.width='100%';
   progressLbl.textContent=`Complete — ${csvLocations.length} locations searched`;
-  const bmi=parseFloat(document.getElementById('radSliderCsv').value);
-  setStatus(`Done: ${totalBuildings} buildings found within ${fmtMiles(bmi)} of ${csvLocations.length} locations`);
+  setStatus(`Done: ${totalBuildings} buildings found across ${csvLocations.length} locations`);
   document.getElementById('csvResCount').innerHTML=`<strong>${totalBuildings}</strong> buildings found`;
   renderBatchResults();
   document.getElementById('csvSearchBtn').disabled=false;
