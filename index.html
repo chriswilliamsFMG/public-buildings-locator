@@ -499,10 +499,12 @@ function setStatus(msg,loading=false){
   document.getElementById('status').innerHTML=loading?`<span class="spinner"></span>${msg}`:msg;
 }
 
-function xhrFetch(url){
+function xhrFetch(endpoint, queryStr){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    xhr.open('GET',url,true);xhr.timeout=35000;
+    xhr.open('POST',endpoint,true);
+    xhr.timeout=35000;
+    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
         try{resolve(JSON.parse(xhr.responseText));}
@@ -511,7 +513,7 @@ function xhrFetch(url){
     };
     xhr.onerror=()=>reject(new Error('Network error'));
     xhr.ontimeout=()=>reject(new Error('Timed out'));
-    xhr.send();
+    xhr.send('data='+encodeURIComponent(queryStr));
   });
 }
 
@@ -530,15 +532,14 @@ async function queryOverpass(lat,lon,radius,catsSet){
     parts.push(`nwr["name"~"Elk|Mason|Masonic|VFW|V\\.F\\.W|Knights of Columbus|K of C|Moose|4-H",i]${around};`);
   }
   const query=`[out:json][timeout:25];(${parts.join('')});out center tags qt 300;`;
-  const encoded=encodeURIComponent(query);
   const endpoints=[
-    'https://overpass-api.de/api/interpreter?data='+encoded,
-    'https://overpass.kumi.systems/api/interpreter?data='+encoded,
-    'https://overpass.openstreetmap.ru/api/interpreter?data='+encoded,
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
   ];
-  for(const url of endpoints){
+  for(const ep of endpoints){
     try{
-      const data=await xhrFetch(url);
+      const data=await xhrFetch(ep, query);
       if(data&&Array.isArray(data.elements)) return data.elements;
     } catch(e){}
   }
