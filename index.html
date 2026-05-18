@@ -512,7 +512,7 @@ function fmtAddr(t){
 }
 
 // Fraternal name pattern — used both to classify and label results
-const FRAT_PAT=/\bvfw\b|veterans of foreign|american legion|\bamvets\b|disabled american veteran|\belks?\b|b\.p\.o\.e|eagles aerie|eagles lodge|fraternal order|free.{0,5}mason|\bmasonic\b|shriner|shrine (club|temple|hall)|moose lodge|loyal order of moose|\bkiwanis\b|rotary club|lions club|optimist club|odd fellows|\bioof\b|knights of columbus|knights of pythias|knight templar|eastern star|\bdemolay\b|scottish rite|york rite|royal arch|\bwoodmen\b|improved order of red men|\bpythian\b|\bgrotto\b|daughters of the nile|daughters of rebekah|tall cedars|white shrine/i;
+const FRAT_PAT=/\belks?\b|\bmason\b|\bmasonic\b|\bvfw\b|v\.f\.w\.|knights of columbus|\bk of c\b|\bmoose\b|\b4-h\b/i;
 
 function humanType(t,name){
   const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
@@ -560,20 +560,24 @@ function setStatus(msg,loading=false){
     loading?`<span class="spinner"></span>${msg}`:msg;
 }
 
-// ── XHR FETCH ──────────────────────────────────────────────────────────────
-function xhrFetch(url){
+// ── XHR FETCH — uses POST to avoid URL length limits ──────────────────────
+function xhrPost(endpoint, queryStr){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    xhr.open('GET',url,true);xhr.timeout=35000;
+    xhr.open('POST', endpoint, true);
+    xhr.timeout=30000;
+    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
         try{resolve(JSON.parse(xhr.responseText));}
-        catch(e){reject(new Error('Invalid JSON'));}
-      } else reject(new Error('HTTP '+xhr.status));
+        catch(e){reject(new Error('Bad JSON from '+endpoint));}
+      } else {
+        reject(new Error('HTTP '+xhr.status+' from '+endpoint));
+      }
     };
-    xhr.onerror=()=>reject(new Error('Network error'));
-    xhr.ontimeout=()=>reject(new Error('Timed out'));
-    xhr.send();
+    xhr.onerror=()=>reject(new Error('Network error reaching '+endpoint));
+    xhr.ontimeout=()=>reject(new Error('Timeout from '+endpoint));
+    xhr.send('data='+encodeURIComponent(queryStr));
   });
 }
 
@@ -582,40 +586,45 @@ async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
   const parts=[];
 
-  // Tag-based queries — use node+way only (not relations), much faster
+  // node+way only (skip relations) — much faster than nwr
   CATS.filter(c=>catsSet.has(c.id)).forEach(c=>{
     c.queries.forEach(q=>{
       const i=q.indexOf('=');
       const k=q.slice(0,i), v=q.slice(i+1);
       if(k!=='name~'){
-        // node is fastest; way covers buildings drawn as polygons
         parts.push(`node["${k}"="${v}"]${around};`);
         parts.push(`way["${k}"="${v}"]${around};`);
       }
     });
   });
 
-  // Fraternal name-regex — node+way only, short keywords, anchored search
+  // Fraternal name-regex — short keywords only for speed
   if(catsSet.has('fraternal')){
-    const fr='VFW|Legion|Elks|Masonic|Shriners|Moose Lodge|Kiwanis|Rotary|Lions Club|Odd Fellows|Knights of Columbus|Scottish Rite|Eastern Star|DeMolay|Woodmen|Eagles|AMVETS|BPOE|IOOF';
+    const fr='Elk|Mason|Masonic|VFW|V\\.F\\.W|Knights of Columbus|K of C|Moose|4-H';
     parts.push(`node["name"~"${fr}",i]${around};`);
     parts.push(`way["name"~"${fr}",i]${around};`);
   }
 
   const query=`[out:json][timeout:25][maxsize:16777216];(${parts.join('')});out center tags qt 200;`;
-  const encoded=encodeURIComponent(query);
+
   const endpoints=[
-    'https://overpass-api.de/api/interpreter?data='+encoded,
-    'https://overpass.kumi.systems/api/interpreter?data='+encoded,
-    'https://overpass.openstreetmap.ru/api/interpreter?data='+encoded,
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter',
   ];
-  for(const url of endpoints){
+
+  let lastErr='';
+  for(const ep of endpoints){
     try{
-      const data=await xhrFetch(url);
+      setStatus(`Querying ${ep.split('/')[2]}…`,true);
+      const data=await xhrPost(ep, query);
       if(data&&Array.isArray(data.elements)) return data.elements;
-    } catch(e){}
+      lastErr='Unexpected response format';
+    } catch(e){
+      lastErr=e.message;
+    }
   }
-  throw new Error('All Overpass endpoints failed');
+  throw new Error(lastErr||'All Overpass endpoints failed');
 }
 
 function parseElements(elements,originLat,originLon){
@@ -669,8 +678,8 @@ async function doSearch(){
     const dl=fmtMiles(mi);
     setStatus(`Found ${allResults.length} buildings within ${dl}`);
   } catch(e){
-    setStatus('⚠ Search failed.');
-    alert('Search failed: '+e.message+'\n\nCheck your internet connection.');
+    setStatus('⚠ Search failed: '+e.message);
+    alert('Search failed:\n\n'+e.message+'\n\nTry reducing the search radius or deselecting some categories.');
   }
   document.getElementById('searchBtn').disabled=false;
 }
