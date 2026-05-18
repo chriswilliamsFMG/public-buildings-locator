@@ -263,8 +263,8 @@ input[type=file]{display:none}
         </div>
         <div class="sec-lbl">Search Radius</div>
         <div class="radius-row">
-          <input type="range" id="radSlider" min="1" max="40" value="8" oninput="updateRad()">
-          <div class="rad-val" id="radVal">2,000 m</div>
+          <input type="range" id="radSlider" min="1" max="10" value="2" step="1" oninput="updateRad()">
+          <div class="rad-val" id="radVal">2 miles</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGrid"></div>
@@ -306,8 +306,8 @@ input[type=file]{display:none}
         <div class="csv-preview" id="csvPreview" style="display:none"></div>
         <div class="sec-lbl">Search Radius (per location)</div>
         <div class="radius-row">
-          <input type="range" id="radSliderCsv" min="1" max="40" value="8" oninput="updateRadCsv()">
-          <div class="rad-val" id="radValCsv">2,000 m</div>
+          <input type="range" id="radSliderCsv" min="1" max="10" value="2" step="1" oninput="updateRadCsv()">
+          <div class="rad-val" id="radValCsv">2 miles</div>
         </div>
         <div class="sec-lbl">Building Categories</div>
         <div class="cat-grid" id="catGridCsv"></div>
@@ -480,18 +480,18 @@ function buildCatGrid(id,set){
 }
 
 // ── RADIUS ─────────────────────────────────────────────────────────────────
+function miToM(mi){return mi*1609.34;}
+function fmtMiles(mi){return mi===1?'1 mile':mi+' miles';}
 function updateRad(){
-  const m=getRadius('radSlider');
-  document.getElementById('radVal').textContent=
-    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
+  const mi=parseFloat(document.getElementById('radSlider').value);
+  document.getElementById('radVal').textContent=fmtMiles(mi);
 }
 function updateRadCsv(){
-  const m=getRadius('radSliderCsv');
-  document.getElementById('radValCsv').textContent=
-    m>=1000?(m/1000).toFixed(1)+' km':m.toLocaleString()+' m';
+  const mi=parseFloat(document.getElementById('radSliderCsv').value);
+  document.getElementById('radValCsv').textContent=fmtMiles(mi);
 }
 function getRadius(id='radSlider'){
-  return parseInt(document.getElementById(id).value)*250;
+  return miToM(parseFloat(document.getElementById(id).value));
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -500,7 +500,7 @@ function haversine(a,b,c,d){
   const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function fmtDist(m){return m<1000?Math.round(m)+' m':(m/1000).toFixed(2)+' km';}
+function fmtDist(m){const mi=m/1609.34;return mi<0.1?Math.round(m)+' m':mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';}
 function fmtAddr(t){
   const p=[];
   if(t['addr:housenumber']&&t['addr:street']) p.push(t['addr:housenumber']+' '+t['addr:street']);
@@ -582,27 +582,25 @@ function xhrFetch(url){
 // This is separate from the tag-based queries and runs as additional union members
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
-  const tagParts=[];   // amenity=X style
-  const nameParts=[];  // name~X style — collected and combined into ONE regex query
+  const tagParts=[];
 
   CATS.filter(c=>catsSet.has(c.id)).forEach(c=>{
     c.queries.forEach(q=>{
       const i=q.indexOf('=');
       const k=q.slice(0,i);
       const v=q.slice(i+1);
-      if(k==='name~'){
-        // Collect all name terms for one combined regex query
-        nameParts.push(v.replace(/[.*+?^${}()|[\]\\]/g,s=>'\\'+s));
-      } else {
-        tagParts.push(`nwr["${k}"="${v}"]${around};`);
-      }
+      // skip name~ entries — handled separately below
+      if(k!=='name~') tagParts.push(`nwr["${k}"="${v}"]${around};`);
     });
   });
 
-  // Add one combined name-regex query if any name~ terms were collected
-  if(nameParts.length>0){
-    const regex=nameParts.join('|');
-    tagParts.push(`nwr["name"~"${regex}",i]${around};`);
+  // If fraternal is selected, add a broad name-regex query.
+  // This is the most reliable way to find lodges, posts, and halls
+  // that OSM mappers tagged as building=yes with just a name.
+  if(catsSet.has('fraternal')){
+    // Single pipe-separated regex — NO escaping needed, these are plain words/phrases
+    const fr='VFW|Veterans of Foreign Wars|American Legion|AMVETS|Disabled American Veterans|Elks|Eagles Lodge|Eagles Aerie|Fraternal Order|Masonic Lodge|Masonic Hall|Masonic Temple|Masonic Center|Masonic|Shriners|Shrine Club|Shrine Temple|Moose Lodge|Loyal Order of Moose|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellows|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|DeMolay|Scottish Rite|York Rite|Royal Arch|Woodmen|Pythian|Grotto|Daughters of the Nile|Daughters of Rebekah|Tall Cedars|White Shrine|BPOE';
+    tagParts.push(`nwr["name"~"${fr}",i]${around};`);
   }
 
   const query=`[out:json][timeout:30];(${tagParts.join('')});out center tags qt 500;`;
@@ -668,7 +666,8 @@ async function doSearch(){
     const elements=await queryOverpass(lat,lon,radius,activeCats);
     allResults=parseElements(elements,lat,lon);
     renderResults();placeMarkers();
-    const dl=radius>=1000?(radius/1000).toFixed(1)+' km':radius+' m';
+    const mi=parseFloat(document.getElementById('radSlider').value);
+    const dl=fmtMiles(mi);
     setStatus(`Found ${allResults.length} buildings within ${dl}`);
   } catch(e){
     setStatus('⚠ Search failed.');
@@ -853,7 +852,8 @@ async function doBatchSearch(){
   }
   progressBar.style.width='100%';
   progressLbl.textContent=`Complete — ${csvLocations.length} locations searched`;
-  setStatus(`Done: ${totalBuildings} buildings found across ${csvLocations.length} locations`);
+  const bmi=parseFloat(document.getElementById('radSliderCsv').value);
+  setStatus(`Done: ${totalBuildings} buildings found within ${fmtMiles(bmi)} of ${csvLocations.length} locations`);
   document.getElementById('csvResCount').innerHTML=`<strong>${totalBuildings}</strong> buildings found`;
   renderBatchResults();
   document.getElementById('csvSearchBtn').disabled=false;
