@@ -578,32 +578,31 @@ function xhrFetch(url){
 }
 
 // ── OVERPASS QUERY ─────────────────────────────────────────────────────────
-// For fraternal name~ queries we use Overpass regex syntax: ["name"~"pattern",i]
-// This is separate from the tag-based queries and runs as additional union members
 async function queryOverpass(lat,lon,radius,catsSet){
   const around=`(around:${radius},${lat},${lon})`;
-  const tagParts=[];
+  const parts=[];
 
+  // Tag-based queries — use node+way only (not relations), much faster
   CATS.filter(c=>catsSet.has(c.id)).forEach(c=>{
     c.queries.forEach(q=>{
       const i=q.indexOf('=');
-      const k=q.slice(0,i);
-      const v=q.slice(i+1);
-      // skip name~ entries — handled separately below
-      if(k!=='name~') tagParts.push(`nwr["${k}"="${v}"]${around};`);
+      const k=q.slice(0,i), v=q.slice(i+1);
+      if(k!=='name~'){
+        // node is fastest; way covers buildings drawn as polygons
+        parts.push(`node["${k}"="${v}"]${around};`);
+        parts.push(`way["${k}"="${v}"]${around};`);
+      }
     });
   });
 
-  // If fraternal is selected, add a broad name-regex query.
-  // This is the most reliable way to find lodges, posts, and halls
-  // that OSM mappers tagged as building=yes with just a name.
+  // Fraternal name-regex — node+way only, short keywords, anchored search
   if(catsSet.has('fraternal')){
-    // Single pipe-separated regex — NO escaping needed, these are plain words/phrases
-    const fr='VFW|Veterans of Foreign Wars|American Legion|AMVETS|Disabled American Veterans|Elks|Eagles Lodge|Eagles Aerie|Fraternal Order|Masonic Lodge|Masonic Hall|Masonic Temple|Masonic Center|Masonic|Shriners|Shrine Club|Shrine Temple|Moose Lodge|Loyal Order of Moose|Kiwanis|Rotary Club|Lions Club|Optimist Club|Odd Fellows|IOOF|Knights of Columbus|Knights of Pythias|Knight Templar|Eastern Star|DeMolay|Scottish Rite|York Rite|Royal Arch|Woodmen|Pythian|Grotto|Daughters of the Nile|Daughters of Rebekah|Tall Cedars|White Shrine|BPOE';
-    tagParts.push(`nwr["name"~"${fr}",i]${around};`);
+    const fr='VFW|Legion|Elks|Masonic|Shriners|Moose Lodge|Kiwanis|Rotary|Lions Club|Odd Fellows|Knights of Columbus|Scottish Rite|Eastern Star|DeMolay|Woodmen|Eagles|AMVETS|BPOE|IOOF';
+    parts.push(`node["name"~"${fr}",i]${around};`);
+    parts.push(`way["name"~"${fr}",i]${around};`);
   }
 
-  const query=`[out:json][timeout:30];(${tagParts.join('')});out center tags qt 500;`;
+  const query=`[out:json][timeout:25][maxsize:16777216];(${parts.join('')});out center tags qt 200;`;
   const encoded=encodeURIComponent(query);
   const endpoints=[
     'https://overpass-api.de/api/interpreter?data='+encoded,
