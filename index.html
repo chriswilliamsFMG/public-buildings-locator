@@ -228,11 +228,11 @@ input[type=file]{display:none}
         <div class="coord-row">
           <div class="field">
             <label>Latitude</label>
-            <input type="text" id="lat" placeholder="e.g. 35.1495" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*">
+            <input type="text" id="lat" placeholder="e.g. 35.1495" inputmode="decimal">
           </div>
           <div class="field">
             <label>Longitude</label>
-            <input type="text" id="lon" placeholder="e.g. -90.049" inputmode="decimal" pattern="-?[0-9]*\.?[0-9]*">
+            <input type="text" id="lon" placeholder="e.g. -90.049" inputmode="decimal">
           </div>
         </div>
         <div class="sec-lbl">Search Radius</div>
@@ -337,7 +337,7 @@ const CATS=[
   {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
   {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
   {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
-  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_centre','amenity=social_club','amenity=fraternity','amenity=meeting_hall']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_centre','amenity=social_club']},
   {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
   {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=fitness_centre']},
   {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital','amenity=clinic','amenity=health_centre']},
@@ -471,7 +471,6 @@ function humanType(t,name){
     sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
     hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
     social_centre:'Social / Fraternal Club',social_club:'Social / Fraternal Club',
-    club:'Club',fraternity:'Fraternal Organization',meeting_hall:'Meeting Hall',
     research_institute:'Research Institute'};
   return m[a]||m[l]||a||l||'Public Building';
 }
@@ -489,8 +488,7 @@ function classify(t,name){
   if(['fitness_centre','sports_hall','recreation_ground'].includes(l)||
      a==='recreation_ground') return 'recreation';
   if(['hospital','clinic','health_centre'].includes(a)) return 'medical';
-  if(['social_centre','social_club','club','fraternity','meeting_hall'].includes(a))
-    return 'fraternal';
+  if(['social_centre','social_club'].includes(a)) return 'fraternal';
   return null;
 }
 
@@ -499,12 +497,10 @@ function setStatus(msg,loading=false){
   document.getElementById('status').innerHTML=loading?`<span class="spinner"></span>${msg}`:msg;
 }
 
-function xhrFetch(endpoint, queryStr){
+function xhrFetch(url){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    xhr.open('POST',endpoint,true);
-    xhr.timeout=35000;
-    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+    xhr.open('GET',url,true);xhr.timeout=35000;
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
         try{resolve(JSON.parse(xhr.responseText));}
@@ -513,7 +509,7 @@ function xhrFetch(endpoint, queryStr){
     };
     xhr.onerror=()=>reject(new Error('Network error'));
     xhr.ontimeout=()=>reject(new Error('Timed out'));
-    xhr.send('data='+encodeURIComponent(queryStr));
+    xhr.send();
   });
 }
 
@@ -527,19 +523,19 @@ async function queryOverpass(lat,lon,radius,catsSet){
       parts.push(`nwr["${k}"="${v}"]${around};`);
     });
   });
-  // Fraternal name search — find any building whose name contains these words
   if(catsSet.has('fraternal')){
-    parts.push(`nwr["name"~"Elk|Mason|Masonic|VFW|V\\.F\\.W|Knights of Columbus|K of C|Moose|4-H",i]${around};`);
+    parts.push(`nwr["name"~"Elk|Mason|Masonic|VFW|Knights of Columbus|K of C|Moose|4-H",i]${around};`);
   }
   const query=`[out:json][timeout:25];(${parts.join('')});out center tags qt 300;`;
+  const encoded=encodeURIComponent(query);
   const endpoints=[
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.openstreetmap.ru/api/interpreter',
+    'https://overpass-api.de/api/interpreter?data='+encoded,
+    'https://overpass.kumi.systems/api/interpreter?data='+encoded,
+    'https://overpass.openstreetmap.ru/api/interpreter?data='+encoded,
   ];
-  for(const ep of endpoints){
+  for(const url of endpoints){
     try{
-      const data=await xhrFetch(ep, query);
+      const data=await xhrFetch(url);
       if(data&&Array.isArray(data.elements)) return data.elements;
     } catch(e){}
   }
