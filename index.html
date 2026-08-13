@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Public Buildings Locator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#181c27;--bg3:#1e2232;--surface:#2a3050;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text:#e8eaf0;--text2:#8b90a8;--text3:#5a5f78;
+  --accent:#5b8cff;--accent2:#3d6bff;--glow:rgba(91,140,255,0.12);
+  --green:#3ecf8e;--amber:#f5a623;--red:#ff5f5f;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:10px;--rl:16px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* address lookup */
+.addr-row{display:flex;gap:6px;margin-bottom:6px}
+.addr-row input{flex:1;font-family:var(--font);font-size:13px}
+.addr-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;
+  padding:7px 12px;font-family:var(--font);font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;flex-shrink:0}
+.addr-btn:active{opacity:.8}
+.addr-status{font-size:11px;color:var(--text3);margin-bottom:8px;min-height:15px}
+
+/* header */
+header{height:54px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 18px;gap:12px;flex-shrink:0;z-index:200}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:17px;height:17px;fill:#fff}
+.logo-name{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+
+/* tabs in header */
+.tabs{margin-left:auto;display:flex;gap:2px}
+.tab{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid transparent;color:var(--text2);background:none;transition:all .15s}
+.tab:hover{color:var(--text);background:var(--bg3)}
+.tab.active{color:#fff;background:var(--accent);border-color:var(--accent)}
+
+/* layout */
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:340px;min-width:280px;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.map-area{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+
+/* panels */
+.panel{display:none;flex-direction:column;height:100%}
+.panel.active{display:flex}
+
+/* shared input styles */
+.s-top{padding:14px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-y:auto}
+.sec-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.coord-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+input[type=number],input[type=text]{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s}
+input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
+.radius-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--surface);
+  border-radius:2px;outline:none;border:none;padding:0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;
+  border-radius:50%;background:var(--accent);cursor:pointer}
+.rad-val{font-size:12px;font-family:var(--mono);color:var(--accent);min-width:54px;text-align:right}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:14px}
+.cat-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:6px 9px;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:500;
+  color:var(--text2);display:flex;align-items:center;gap:6px;transition:all .15s;text-align:left}
+.cat-btn:hover{border-color:var(--border2);color:var(--text)}
+.cat-btn.on{font-weight:600;color:#fff}
+.cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+.btn-primary{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--r);
+  padding:10px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;
+  transition:background .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{background:var(--surface);cursor:not-allowed}
+.btn-secondary{width:100%;background:var(--bg3);color:var(--text2);border:1px solid var(--border2);border-radius:var(--r);
+  padding:9px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-secondary:hover{background:var(--surface);color:var(--text)}
+.btn-secondary:disabled{opacity:.4;cursor:not-allowed}
+
+/* results */
+.res-hdr{padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between}
+.res-count{font-size:12px;color:var(--text2)}
+.res-count strong{color:var(--text)}
+select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  color:var(--text2);font-size:11px;padding:3px 7px;font-family:var(--font);cursor:pointer}
+.res-list{flex:1;overflow-y:auto;padding:6px}
+.res-list::-webkit-scrollbar{width:3px}
+.res-list::-webkit-scrollbar-thumb{background:var(--surface);border-radius:2px}
+.card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px 11px;margin-bottom:5px;cursor:pointer;transition:all .15s}
+.card:hover{border-color:var(--border2);background:var(--surface)}
+.card.active{border-color:var(--accent);background:var(--glow)}
+.card-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.card-type{font-size:11px;margin-bottom:4px}
+.card-meta{display:flex;align-items:center;gap:8px;font-size:11px}
+.card-dist{font-family:var(--mono);color:var(--accent)}
+.card-addr{color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+
+/* CSV panel specific */
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--rl);padding:24px 16px;
+  text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px;background:var(--bg3)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:var(--glow)}
+.drop-icon{font-size:28px;margin-bottom:8px}
+.drop-label{font-size:13px;color:var(--text2);line-height:1.6}
+.drop-label strong{color:var(--text)}
+.drop-label small{display:block;font-size:11px;color:var(--text3);margin-top:4px}
+input[type=file]{display:none}
+
+.csv-preview{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2)}
+.csv-preview strong{color:var(--text);display:block;margin-bottom:4px}
+
+.progress-wrap{margin-bottom:12px;display:none}
+.progress-bar-bg{height:6px;background:var(--surface);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.progress-bar{height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width .3s}
+.progress-lbl{font-size:11px;color:var(--text2);font-family:var(--mono)}
+
+/* location group cards in CSV results */
+.loc-group{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+  margin-bottom:8px;overflow:hidden}
+.loc-group-hdr{padding:8px 11px;cursor:pointer;display:flex;align-items:center;
+  justify-content:space-between;gap:8px;transition:background .15s}
+.loc-group-hdr:hover{background:var(--surface)}
+.loc-group-title{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.loc-group-meta{font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+.loc-group-body{display:none;border-top:1px solid var(--border)}
+.loc-group-body.open{display:block}
+.loc-sub-card{padding:7px 11px;border-bottom:1px solid var(--border);cursor:pointer;
+  transition:background .15s;display:flex;align-items:center;gap:8px}
+.loc-sub-card:last-child{border-bottom:none}
+.loc-sub-card:hover{background:var(--surface)}
+.loc-sub-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.loc-sub-name{font-size:12px;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc-sub-dist{font-size:11px;font-family:var(--mono);color:var(--accent);flex-shrink:0}
+
+/* map overlays */
+.map-btns{position:absolute;top:10px;right:10px;z-index:500;display:flex;flex-direction:column;gap:6px}
+.map-btn{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  padding:7px 12px;color:var(--text);font-family:var(--font);font-size:12px;
+  font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s}
+.map-btn:hover{background:var(--surface)}
+.statusbar{position:absolute;bottom:10px;left:10px;z-index:500;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:8px;padding:5px 12px;
+  font-size:11px;color:var(--text2);font-family:var(--mono);max-width:500px}
+.detail{position:absolute;bottom:10px;right:10px;z-index:500;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:var(--rl);padding:14px 16px;
+  min-width:240px;max-width:300px;display:none}
+.detail.show{display:block}
+.detail-name{font-size:14px;font-weight:600;margin-bottom:3px;color:var(--text)}
+.detail-type{font-size:12px;margin-bottom:10px}
+.detail-row{font-size:12px;color:var(--text2);margin-bottom:4px;word-break:break-word}
+.detail-row a{color:var(--accent);text-decoration:none}
+.detail-close{position:absolute;top:9px;right:10px;background:none;border:none;
+  color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:2px 5px}
+.detail-close:hover{color:var(--text)}
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--surface);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:5px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:160px;color:var(--text3);text-align:center;padding:16px;font-size:13px;line-height:1.7}
+.leaflet-popup-content-wrapper{background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--r);color:var(--text);box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.leaflet-popup-tip{background:var(--bg2)}
+.leaflet-popup-content{margin:10px 14px;font-family:var(--font);font-size:13px}
+.leaflet-container{background:var(--bg)}
+.pop-name{font-weight:600;color:var(--text)}
+.pop-type{font-size:11px;margin-top:2px}
+.pop-dist{font-size:11px;color:var(--accent);font-family:var(--mono);margin-top:3px}
+.pop-src{font-size:10px;color:var(--text3);margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+  </div>
+  <div>
+    <div class="logo-name">Public Buildings Locator</div>
+    <div class="logo-sub">OpenStreetMap · Overpass API</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('single')">Single Location</button>
+    <button class="tab" onclick="switchTab('csv')">CSV Batch</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+
+    <!-- ── SINGLE PANEL ── -->
+    <div class="panel active" id="panelSingle">
+      <div class="s-top">
+        <div class="sec-lbl">Address or Coordinates</div>
+        <div class="addr-row">
+          <input type="text" id="addrInput" placeholder="123 Main St, City, State  —or—  35.14, -90.04"
+            onkeydown="if(event.key==='Enter') geocodeAddr()">
+          <button class="addr-btn" onclick="geocodeAddr()">Go</button>
+        </div>
+        <div class="addr-status" id="addrStatus"></div>
+        <div class="sec-lbl">Coordinates</div>
+        <div class="coord-row">
+          <div class="field"><label>Latitude</label><input type="number" id="lat" placeholder="e.g. 35.1495" step="any"></div>
+          <div class="field"><label>Longitude</label><input type="number" id="lon" placeholder="e.g. -90.049" step="any"></div>
+        </div>
+        <div class="sec-lbl">Search Radius</div>
+        <div class="radius-row">
+          <input type="range" id="radSlider" min="1" max="5" value="2" step="1" oninput="updateRad()">
+          <div class="rad-val" id="radVal">2 miles</div>
+        </div>
+        <div id="radTip" style="display:none;font-size:11px;color:var(--amber);background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);border-radius:6px;padding:6px 9px;margin-bottom:8px;line-height:1.5"></div>
+        <div class="sec-lbl">Building Categories</div>
+        <div class="cat-grid" id="catGrid"></div>
+        <button class="btn-primary" id="searchBtn" onclick="doSearch()">
+          <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          Search Buildings
+        </button>
+      </div>
+      <div class="res-hdr">
+        <div class="res-count" id="resCount"><strong>0</strong> results</div>
+        <select id="sortSel" onchange="renderResults()">
+          <option value="dist">Nearest first</option>
+          <option value="name">Name A–Z</option>
+          <option value="type">By type</option>
+        </select>
+      </div>
+      <div class="res-list" id="resList">
+        <div class="empty">Enter coordinates above<br>and press Search.</div>
+      </div>
+    </div>
+
+    <!-- ── CSV PANEL ── -->
+    <div class="panel" id="panelCsv">
+      <div class="s-top">
+        <div class="sec-lbl">Upload CSV File</div>
+
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleDrop(event)">
+          <div class="drop-icon">📂</div>
+          <div class="drop-label">
+            <strong>Click to upload or drag & drop</strong>
+            CSV file with latitude & longitude columns
+            <small>Column names: lat/latitude, lon/lng/longitude (case-insensitive)<br>Optional: name/label column for location labels</small>
+          </div>
+        </div>
+        <input type="file" id="csvFile" accept=".csv,.txt" onchange="handleFileSelect(event)">
+
+        <div class="csv-preview" id="csvPreview" style="display:none"></div>
+
+        <div class="sec-lbl">Search Radius (per location)</div>
+        <div class="radius-row">
+          <input type="range" id="radSliderCsv" min="1" max="5" value="2" step="1" oninput="updateRadCsv()">
+          <div class="rad-val" id="radValCsv">2 miles</div>
+        </div>
+
+        <div class="sec-lbl">Building Categories</div>
+        <div class="cat-grid" id="catGridCsv"></div>
+
+        <button class="btn-primary" id="csvSearchBtn" onclick="doBatchSearch()" disabled>
+          <svg width="14" height="14" fill="white" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          Search All Locations
+        </button>
+
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+          <div class="progress-lbl" id="progressLbl">0 / 0 locations</div>
+        </div>
+
+        <button class="btn-secondary" id="exportBtn" onclick="exportCsv()" disabled>
+          <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Export Results to CSV
+        </button>
+      </div>
+
+      <div class="res-hdr">
+        <div class="res-count" id="csvResCount"><strong>0</strong> buildings found</div>
+        <select id="csvGroupSel" onchange="renderBatchResults()">
+          <option value="location">Group by location</option>
+          <option value="type">Group by type</option>
+        </select>
+      </div>
+      <div class="res-list" id="csvResList">
+        <div class="empty">Upload a CSV file<br>and click Search All Locations.</div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <div class="map-area">
+    <div id="map"></div>
+    <div class="map-btns">
+      <button class="map-btn" onclick="fitAll()">⊞ Fit all</button>
+      <button class="map-btn" id="satBtn" onclick="toggleSat()">🛰 Satellite</button>
+    </div>
+    <div class="statusbar" id="status">Ready — enter coordinates or upload a CSV.</div>
+    <div class="detail" id="detail">
+      <button class="detail-close" onclick="closeDetail()">✕</button>
+      <div class="detail-name" id="dName"></div>
+      <div class="detail-type" id="dType"></div>
+      <div id="dBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Categories ─────────────────────────────────────────────────────────────
+const CATS=[
+  {id:'school',    label:'Schools',      color:'#5b8cff',queries:['amenity=school','amenity=kindergarten','amenity=college']},
+  {id:'church',    label:'Churches',     color:'#a78bfa',queries:['amenity=place_of_worship']},
+  {id:'civic',     label:'Civic',        color:'#3ecf8e',queries:['amenity=library','amenity=fire_station','amenity=police','amenity=townhall','amenity=courthouse','amenity=post_office','amenity=community_centre']},
+  {id:'stadium',   label:'Stadiums',     color:'#f5a623',queries:['leisure=stadium','leisure=sports_centre','amenity=stadium']},
+  {id:'fraternal', label:'Fraternal',    color:'#ff5f5f',queries:['amenity=social_centre','amenity=social_club']},
+  {id:'university',label:'Universities', color:'#f472b6',queries:['amenity=university','amenity=research_institute']},
+  {id:'recreation',label:'Recreation',   color:'#38bdf8',queries:['leisure=recreation_ground','leisure=sports_hall','leisure=pitch','amenity=recreation_ground']},
+  {id:'medical',   label:'Medical',      color:'#4ade80',queries:['amenity=hospital']},
+];
+const CAT_MAP=Object.fromEntries(CATS.map(c=>[c.id,c]));
+
+// ── State ──────────────────────────────────────────────────────────────────
+let map,streetLayer,satLayer,useSat=false;
+let originMarkers=[],radiusCircles=[],markers=[];
+let allResults=[],activeCard=null;
+let activeCats=new Set(CATS.map(c=>c.id));
+let activeCatsCsv=new Set(CATS.map(c=>c.id));
+let csvLocations=[]; // parsed rows from CSV
+let batchResults=[]; // [{loc, results:[]}]
+let currentTab='single';
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['single','csv'][i]===tab));
+  document.getElementById('panelSingle').classList.toggle('active',tab==='single');
+  document.getElementById('panelCsv').classList.toggle('active',tab==='csv');
+  if(tab==='csv'&&batchResults.length) renderBatchMap();
+  else if(tab==='single'&&allResults.length) placeMarkers();
+}
+
+// ── Map init ───────────────────────────────────────────────────────────────
+function initMap(){
+  map=L.map('map',{zoomControl:false}).setView([39.5,-98.35],4);
+  streetLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CartoDB',maxZoom:19}).addTo(map);
+  satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'© Esri',maxZoom:19});
+  L.control.zoom({position:'bottomright'}).addTo(map);
+}
+function toggleSat(){
+  useSat=!useSat;
+  if(useSat){map.removeLayer(streetLayer);satLayer.addTo(map);document.getElementById('satBtn').textContent='🗺 Street';}
+  else{map.removeLayer(satLayer);streetLayer.addTo(map);document.getElementById('satBtn').textContent='🛰 Satellite';}
+}
+function fitAll(){
+  const pts=[...originMarkers.map(m=>m.getLatLng()),...markers.map(m=>m.getLatLng())];
+  if(pts.length) map.fitBounds(pts.map(p=>[p.lat,p.lng]),{padding:[40,40]});
+}
+function clearAll(){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  originMarkers.forEach(m=>map.removeLayer(m));originMarkers=[];
+  radiusCircles.forEach(c=>map.removeLayer(c));radiusCircles=[];
+}
+
+// ── Category grids ─────────────────────────────────────────────────────────
+function buildCatGrid(containerId, activeCatsSet){
+  const g=document.getElementById(containerId);
+  CATS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cat-btn on';
+    b.innerHTML=`<span class="cat-dot" style="background:${c.color}"></span>${c.label}`;
+    b.style.cssText=`border-color:${c.color}44;background:${c.color}18;color:#fff`;
+    b.onclick=()=>{
+      if(activeCatsSet.has(c.id)){
+        activeCatsSet.delete(c.id);b.classList.remove('on');
+        b.style.cssText='border-color:var(--border);background:var(--bg3);color:var(--text2)';
+      } else {
+        activeCatsSet.add(c.id);b.classList.add('on');
+        b.style.cssText=`border-color:${c.color}44;background:${c.color}18;color:#fff`;
+      }
+    };
+    g.appendChild(b);
+  });
+}
+
+// ── Radius ─────────────────────────────────────────────────────────────────
+function updateRad(){
+  const mi=parseInt(document.getElementById('radSlider').value);
+  document.getElementById('radVal').textContent=mi===1?'1 mile':mi+' miles';
+  const tip=document.getElementById('radTip');
+  if(mi>=4){
+    tip.textContent='⚠ Large radii take longer to return results. In cities, 1–2 miles is recommended. The maximum is 5 miles to keep searches reliable.';
+    tip.style.display='block';
+  } else {
+    tip.style.display='none';
+  }
+}
+function updateRadCsv(){
+  const mi=parseInt(document.getElementById('radSliderCsv').value);
+  document.getElementById('radValCsv').textContent=mi===1?'1 mile':mi+' miles';
+}
+function getRadius(sliderId='radSlider'){return Math.round(parseInt(document.getElementById(sliderId).value)*1609.34);}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function haversine(a,b,c,d){
+  const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180;
+  const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function fmtDist(m){const mi=m/1609.34;return mi<10?mi.toFixed(2)+' mi':mi.toFixed(1)+' mi';}
+function fmtAddr(t){
+  const p=[];
+  if(t['addr:housenumber']&&t['addr:street']) p.push(t['addr:housenumber']+' '+t['addr:street']);
+  else if(t['addr:street']) p.push(t['addr:street']);
+  if(t['addr:city']) p.push(t['addr:city']);
+  if(t['addr:state']) p.push(t['addr:state']);
+  if(t['addr:postcode']) p.push(t['addr:postcode']);
+  return p.join(', ');
+}
+function humanType(t,name){
+  const a=t.amenity||'',l=t.leisure||'',rel=t.religion?' · '+t.religion:'';
+  const m={school:'School',kindergarten:'Kindergarten',college:'College',
+    place_of_worship:'Place of Worship'+rel,university:'University',
+    library:'Library',fire_station:'Fire Station',police:'Police Dept.',
+    townhall:'Town Hall',courthouse:'Courthouse',post_office:'Post Office',
+    community_centre:'Community Center',stadium:'Stadium',
+    sports_centre:'Sports Center',fitness_centre:'Fitness Center',
+    sports_hall:'Sports Hall',recreation_ground:'Recreation Ground',
+    hospital:'Hospital',clinic:'Clinic',health_centre:'Health Center',
+    social_club:'Social / Fraternal Club',club:'Social / Fraternal Club',research_institute:'Research Institute'};
+  const fraternalPat=/vfw|veterans of foreign|american legion|amvets|elks|eagle|mason|freemason|masonic|shriner|shrine|moose|kiwanis|rotary|lions club|optimist|odd fellow|knights of columbus|knight|red men|woodmen|eastern star|scottish rite|york rite|grotto|aerie/i;
+  if(fraternalPat.test(name||'')) return 'Fraternal Organization';
+  return m[a]||m[l]||a||l||'Public Building';
+}
+function classify(t){
+  const a=t.amenity||'',l=t.leisure||'',lu=t.landuse||'',nm=(t.name||'').toLowerCase();
+  if(['school','kindergarten','college'].includes(a)) return 'school';
+  if(a==='place_of_worship') return 'church';
+  if(a==='university'||a==='research_institute'||lu==='education') return 'university';
+  if(['library','fire_station','police','townhall','courthouse','post_office','community_centre'].includes(a)) return 'civic';
+  if(['stadium','sports_centre'].includes(l)||a==='stadium') return 'stadium';
+  if(['recreation_ground','sports_hall','pitch'].includes(l)||a==='recreation_ground') return 'recreation';
+  if(a==='hospital') return 'medical';
+  if(a==='social_club') return 'fraternal';
+  const fraternalPattern=/vfw|veterans of foreign|american legion|amvets|disabled american|elks|b\.p\.o|bpoe|eagle|fraternal order|mason|freemason|masonic|shriner|shrine|moose|loyal order|kiwanis|rotary|lions club|optimist|odd fellow|ioof|knights of columbus|knights of pythias|knight templar|eastern star|rainbow girls|demolay|grotto|scottish rite|york rite|commandery|woodmen|red men|wigwam/i;
+  if(fraternalPattern.test(nm)) return 'fraternal';
+  return null;
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function setStatus(msg,loading=false){
+  document.getElementById('status').innerHTML=loading?`<span class="spinner"></span>${msg}`:msg;
+}
+
+// ── XHR fetch ──────────────────────────────────────────────────────────────
+function xhrFetch(url){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('GET',url,true);xhr.timeout=15000;
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){
+        try{resolve(JSON.parse(xhr.responseText));}
+        catch(e){reject(new Error('Invalid JSON'));}
+      } else reject(new Error('HTTP '+xhr.status));
+    };
+    xhr.onerror=()=>reject(new Error('Network error'));
+    xhr.ontimeout=()=>reject(new Error('Timed out'));
+    xhr.send();
+  });
+}
+
+// ── Build and run Overpass query ───────────────────────────────────────────
+async function queryOverpass(lat,lon,radius,catsSet){
+  const R=6378137;
+  const dLat=radius/R*(180/Math.PI);
+  const dLon=radius/(R*Math.cos(lat*Math.PI/180))*(180/Math.PI);
+  const bbox=`${lat-dLat},${lon-dLon},${lat+dLat},${lon+dLon}`;
+  const fraternalRegex='VFW|American Legion|AMVETS|Elks|Eagles|Masonic|Mason|Shriner|Moose Lodge|Kiwanis|Rotary Club|Lions Club|Odd Fellows|Knights of Columbus|Eastern Star|Scottish Rite|DeMolay|Woodmen|Grotto';
+
+  // Collect unique amenity/leisure values — avoids duplicate node+way pairs
+  const amenityVals=[...new Set(
+    CATS.filter(c=>catsSet.has(c.id))
+      .flatMap(c=>c.queries)
+      .filter(q=>q.startsWith('amenity='))
+      .map(q=>q.slice(8))
+  )];
+  const leisureVals=[...new Set(
+    CATS.filter(c=>catsSet.has(c.id))
+      .flatMap(c=>c.queries)
+      .filter(q=>q.startsWith('leisure='))
+      .map(q=>q.slice(8))
+  )];
+
+  // Build compact amenity regex query — ONE statement instead of N*2
+  const amenityFilter=amenityVals.length?`~"${amenityVals.join('|')}"`:null;
+  const leisureFilter=leisureVals.length?`~"${leisureVals.join('|')}"`:null;
+
+  let tagStatements='';
+  if(amenityFilter) tagStatements+=`node["amenity"${amenityFilter}];way["amenity"${amenityFilter}];`;
+  if(leisureFilter) tagStatements+=`node["leisure"${leisureFilter}];way["leisure"${leisureFilter}];`;
+
+  const tagQuery=`[out:json][timeout:25][bbox:${bbox}];(${tagStatements});out center tags qt 500;`;
+
+  const fratQuery=catsSet.has('fraternal')
+    ?`[out:json][timeout:25][bbox:${bbox}];(node["name"~"${fraternalRegex}",i];way["name"~"${fraternalRegex}",i];);out center tags qt 100;`
+    :null;
+
+  // Combine tag and fraternal into ONE query — halves the number of requests
+  const fratStatements=fratQuery
+    ?`node["name"~"${fraternalRegex}",i];way["name"~"${fraternalRegex}",i];`
+    :'';
+  const combinedQuery=`[out:json][timeout:25][bbox:${bbox}];(${tagStatements}${fratStatements});out center tags qt 500;`;
+
+  const eps=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  ];
+
+  // Race all endpoints — use whichever responds first
+  const elements=await new Promise((resolve,reject)=>{
+    let settled=false;
+    let failures=0;
+    eps.forEach(ep=>{
+      const url=ep+'?data='+encodeURIComponent(combinedQuery);
+      xhrFetch(url).then(data=>{
+        if(!settled&&data&&Array.isArray(data.elements)){
+          settled=true;
+          resolve(data.elements);
+        }
+      }).catch(e=>{
+        failures++;
+        if(failures===eps.length&&!settled)
+          reject(new Error('All Overpass endpoints failed — please try again in a moment.'));
+      });
+    });
+  });
+
+  return elements;
+}
+
+function parseElements(elements,originLat,originLon,radius){
+  const seen=new Set(),results=[];
+  elements.forEach(el=>{
+    const t=el.tags||{};
+    const name=t.name||t['name:en']||null;if(!name) return;
+    const eLat=el.lat??el.center?.lat;const eLon=el.lon??el.center?.lon;
+    if(eLat==null||eLon==null) return;
+    const dist=haversine(originLat,originLon,eLat,eLon);
+    if(radius&&dist>radius) return; // filter bbox corners outside actual radius
+    if(t.highway) return; // skip roads and streets
+    if(t.boundary||t.landuse||t.natural||t.waterway||t.railway) return; // skip non-buildings
+    if(t.access==='private'||t.access==='customers') return; // skip private/customer-only access
+    const key=`${name}|${Math.round(eLat*1000)}|${Math.round(eLon*1000)}`;
+    if(seen.has(key)) return;seen.add(key);
+    const cat=classify(t);if(!cat) return;
+    results.push({
+      id:el.id,name,lat:eLat,lon:eLon,tags:t,cat,dist,
+      addr:fmtAddr(t),
+      phone:t.phone||t['contact:phone']||null,
+      website:t.website||t['contact:website']||null,
+      opening:t.opening_hours||null,
+    });
+  });
+  return results;
+}
+
+// ── Address geocoding ─────────────────────────────────────────────────────
+async function geocodeAddr(){
+  const raw=document.getElementById('addrInput').value.trim();
+  if(!raw) return;
+  const status=document.getElementById('addrStatus');
+  // Check if it looks like coordinates already e.g. "35.14, -90.04"
+  const coordMatch=raw.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+  if(coordMatch){
+    const lat=parseFloat(coordMatch[1]),lon=parseFloat(coordMatch[2]);
+    if(lat>=-90&&lat<=90&&lon>=-180&&lon<=180){
+      document.getElementById('lat').value=lat.toFixed(6);
+      document.getElementById('lon').value=lon.toFixed(6);
+      status.style.color='var(--green)';
+      status.textContent='Coordinates set.';
+      return;
+    }
+  }
+  status.style.color='var(--text3)';
+  status.textContent='Looking up address…';
+  try{
+    // Strip suite/unit/floor/apt info before geocoding — Nominatim can't use it
+    const cleaned=raw.replace(/[,]?\s*(suite|ste|unit|apt|apartment|floor|fl|room|rm|#)\s*\.?\s*[\w-]*/gi,'').trim().replace(/,\s*,/g,',').trim();
+    const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(cleaned);
+    const res=await fetch(url,{headers:{'Accept-Language':'en-US,en'}});
+    const data=await res.json();
+    if(!data||!data.length){
+      status.style.color='var(--red)';
+      status.textContent='Address not found. Try adding city and state.';
+      return;
+    }
+    const lat=parseFloat(data[0].lat),lon=parseFloat(data[0].lon);
+    document.getElementById('lat').value=lat.toFixed(6);
+    document.getElementById('lon').value=lon.toFixed(6);
+    status.style.color='var(--green)';
+    status.textContent='Found: '+data[0].display_name.split(',').slice(0,3).join(',');
+  } catch(e){
+    status.style.color='var(--red)';
+    status.textContent='Geocoding failed. Enter coordinates manually.';
+  }
+}
+
+// ── Single search ──────────────────────────────────────────────────────────
+async function doSearch(){
+  const lat=parseFloat(document.getElementById('lat').value);
+  const lon=parseFloat(document.getElementById('lon').value);
+  if(isNaN(lat)||isNaN(lon)){alert('Please enter valid latitude and longitude.');return;}
+  if(lat<-90||lat>90||lon<-180||lon>180){alert('Coordinates out of valid range.');return;}
+  if(activeCats.size===0){alert('Please select at least one category.');return;}
+
+  const radius=getRadius('radSlider');
+  clearAll();allResults=[];
+  document.getElementById('searchBtn').disabled=true;
+
+  // Place origin
+  const oIcon=L.divIcon({html:'<div style="width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #5b8cff;box-shadow:0 0 0 5px rgba(91,140,255,.2)"></div>',iconSize:[14,14],iconAnchor:[7,7],className:''});
+  originMarkers.push(L.marker([lat,lon],{icon:oIcon,zIndexOffset:1000}).addTo(map));
+  radiusCircles.push(L.circle([lat,lon],{radius,color:'#5b8cff',fillColor:'#5b8cff',fillOpacity:.05,weight:1.5,dashArray:'5 7'}).addTo(map));
+  map.setView([lat,lon],13);
+
+  setStatus('Querying Overpass API…',true);
+  try{
+    const elements=await queryOverpass(lat,lon,radius,activeCats);
+    allResults=parseElements(elements,lat,lon,radius);
+    renderResults();placeMarkers();
+    const mi=parseInt(document.getElementById('radSlider').value);
+    const dl=mi===1?'1 mile':mi+' miles';
+    setStatus(`Found ${allResults.length} buildings within ${dl}`);
+  } catch(e){
+    setStatus('⚠ Search failed.');
+    alert('Search failed: '+e.message+'\n\nCheck your internet connection.');
+  }
+  document.getElementById('searchBtn').disabled=false;
+}
+
+function placeMarkers(){
+  markers.forEach(m=>map.removeLayer(m));markers=[];
+  getSorted().forEach(r=>{
+    const c=CAT_MAP[r.cat].color;
+    const icon=L.divIcon({
+      html:`<div style="width:18px;height:18px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>`,
+      iconSize:[18,18],iconAnchor:[9,18],className:''
+    });
+    const m=L.marker([r.lat,r.lon],{icon}).addTo(map)
+      .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags,r.name))}</div><div class="pop-dist">${fmtDist(r.dist)}</div>`,{maxWidth:220});
+    m.on('click',()=>selectResult(r.id));
+    markers.push(m);r._marker=m;
+  });
+}
+function getSorted(){
+  const s=document.getElementById('sortSel').value;
+  const f=allResults.filter(r=>activeCats.has(r.cat));
+  if(s==='dist') return [...f].sort((a,b)=>a.dist-b.dist);
+  if(s==='name') return [...f].sort((a,b)=>a.name.localeCompare(b.name));
+  return [...f].sort((a,b)=>a.cat.localeCompare(b.cat)||a.dist-b.dist);
+}
+function renderResults(){
+  const sorted=getSorted();
+  document.getElementById('resCount').innerHTML=`<strong>${sorted.length}</strong> result${sorted.length!==1?'s':''}`;
+  const list=document.getElementById('resList');
+  if(!sorted.length){list.innerHTML='<div class="empty">No buildings found.<br>Try a larger radius.</div>';return;}
+  list.innerHTML=sorted.map(r=>{
+    const c=CAT_MAP[r.cat];
+    return `<div class="card" id="card_${r.id}" onclick="selectResult(${r.id})">
+      <div class="card-name">${esc(r.name)}</div>
+      <div class="card-type" style="color:${c.color}">${esc(humanType(r.tags,r.name))}</div>
+      <div class="card-meta"><span class="card-dist">${fmtDist(r.dist)}</span>${r.addr?`<span style="color:var(--text3)">·</span><span class="card-addr">${esc(r.addr)}</span>`:''}</div>
+    </div>`;
+  }).join('');
+}
+function selectResult(id){
+  const r=allResults.find(x=>x.id===id);if(!r) return;
+  if(activeCard) document.getElementById('card_'+activeCard)?.classList.remove('active');
+  activeCard=id;
+  document.getElementById('card_'+id)?.classList.add('active');
+  document.getElementById('card_'+id)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+  map.flyTo([r.lat,r.lon],16,{duration:.8});
+  if(r._marker) r._marker.openPopup();
+  showDetail(r);
+}
+function showDetail(r,srcLabel){
+  const c=CAT_MAP[r.cat];
+  document.getElementById('dName').textContent=r.name;
+  document.getElementById('dType').innerHTML=`<span style="color:${c.color}">${esc(humanType(r.tags,r.name))}</span> &nbsp;·&nbsp; ${fmtDist(r.dist)} away`;
+  let html='';
+  if(srcLabel) html+=`<div class="detail-row" style="color:var(--text3);font-size:11px">📌 Near: ${esc(srcLabel)}</div>`;
+  if(r.addr)    html+=`<div class="detail-row">📍 ${esc(r.addr)}</div>`;
+  if(r.phone)   html+=`<div class="detail-row">📞 ${esc(r.phone)}</div>`;
+  if(r.website) html+=`<div class="detail-row">🌐 <a href="${esc(r.website)}" target="_blank">${esc(r.website)}</a></div>`;
+  if(r.opening) html+=`<div class="detail-row">🕐 ${esc(r.opening)}</div>`;
+  html+=`<div class="detail-row" style="color:var(--text3);font-family:var(--mono);font-size:11px">🗺 ${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}</div>`;
+  document.getElementById('dBody').innerHTML=html;
+  document.getElementById('detail').classList.add('show');
+}
+function closeDetail(){document.getElementById('detail').classList.remove('show');}
+
+// ── CSV parsing ────────────────────────────────────────────────────────────
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(lines.length<2) throw new Error('CSV must have a header row and at least one data row.');
+  // Parse header — handle quoted fields
+  const headers=parseCsvRow(lines[0]).map(h=>h.trim().toLowerCase());
+
+  // Find lat/lon/name columns (flexible naming)
+  const latCol=headers.findIndex(h=>['lat','latitude'].includes(h));
+  const lonCol=headers.findIndex(h=>['lon','lng','long','longitude'].includes(h));
+  const nameCol=headers.findIndex(h=>['name','label','location','site','address','id'].includes(h));
+  if(latCol===-1) throw new Error('No latitude column found.\nExpected column named: lat or latitude');
+  if(lonCol===-1) throw new Error('No longitude column found.\nExpected column named: lon, lng, or longitude');
+
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const line=lines[i].trim();if(!line) continue;
+    const cols=parseCsvRow(line);
+    const lat=parseFloat(cols[latCol]);
+    const lon=parseFloat(cols[lonCol]);
+    if(isNaN(lat)||isNaN(lon)) continue;
+    if(lat<-90||lat>90||lon<-180||lon>180) continue;
+    const name=nameCol>=0&&cols[nameCol]?cols[nameCol].trim():`Location ${rows.length+1}`;
+    rows.push({lat,lon,name,rowIndex:i});
+  }
+  if(!rows.length) throw new Error('No valid coordinate rows found in the CSV.');
+  return rows;
+}
+
+function parseCsvRow(line){
+  // Handle quoted fields with commas inside
+  const cols=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){cols.push(cur);cur='';}
+    else{cur+=ch;}
+  }
+  cols.push(cur);
+  return cols;
+}
+
+function handleFileSelect(e){
+  const file=e.target.files[0];if(!file) return;
+  loadCsvFile(file);
+}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file&&(file.name.endsWith('.csv')||file.name.endsWith('.txt'))) loadCsvFile(file);
+  else alert('Please drop a .csv file.');
+}
+function loadCsvFile(file){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      csvLocations=parseCSV(ev.target.result);
+      const preview=document.getElementById('csvPreview');
+      preview.style.display='block';
+      preview.innerHTML=`<strong>✓ ${file.name}</strong>${csvLocations.length} locations loaded — first 3: ${csvLocations.slice(0,3).map(r=>r.name).join(', ')}${csvLocations.length>3?'…':''}`;
+      document.getElementById('csvSearchBtn').disabled=false;
+      batchResults=[];
+      document.getElementById('csvResList').innerHTML='<div class="empty">Click Search All Locations<br>to begin.</div>';
+      document.getElementById('csvResCount').innerHTML='<strong>0</strong> buildings found';
+      document.getElementById('exportBtn').disabled=true;
+    } catch(e){
+      alert('Could not read CSV:\n\n'+e.message+'\n\nMake sure your file has lat/lon columns.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Batch search ───────────────────────────────────────────────────────────
+async function doBatchSearch(){
+  if(!csvLocations.length){alert('Please upload a CSV file first.');return;}
+  if(activeCatsCsv.size===0){alert('Please select at least one category.');return;}
+
+  const radius=getRadius('radSliderCsv');
+  clearAll();batchResults=[];
+
+  document.getElementById('csvSearchBtn').disabled=true;
+  document.getElementById('exportBtn').disabled=true;
+  const progressWrap=document.getElementById('progressWrap');
+  const progressBar=document.getElementById('progressBar');
+  const progressLbl=document.getElementById('progressLbl');
+  progressWrap.style.display='block';
+
+  // Place all origin markers first
+  const oIcon=L.divIcon({html:'<div style="width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #5b8cff;box-shadow:0 0 0 3px rgba(91,140,255,.2)"></div>',iconSize:[10,10],iconAnchor:[5,5],className:''});
+  csvLocations.forEach(loc=>{
+    originMarkers.push(L.marker([loc.lat,loc.lon],{icon:oIcon,zIndexOffset:1000})
+      .bindTooltip(loc.name,{permanent:false,direction:'top'}).addTo(map));
+  });
+  if(csvLocations.length) map.fitBounds(csvLocations.map(l=>[l.lat,l.lon]),{padding:[40,40]});
+
+  let totalBuildings=0;
+  for(let i=0;i<csvLocations.length;i++){
+    const loc=csvLocations[i];
+    progressBar.style.width=Math.round((i/csvLocations.length)*100)+'%';
+    progressLbl.textContent=`${i+1} / ${csvLocations.length} — ${loc.name}`;
+    setStatus(`Searching location ${i+1} of ${csvLocations.length}: ${loc.name}…`,true);
+
+    try{
+      const elements=await queryOverpass(loc.lat,loc.lon,radius,activeCatsCsv);
+      const results=parseElements(elements,loc.lat,loc.lon,radius);
+      batchResults.push({loc,results});
+      totalBuildings+=results.length;
+
+      // Place markers for this location
+      results.forEach(r=>{
+        const c=CAT_MAP[r.cat].color;
+        const icon=L.divIcon({
+          html:`<div style="width:14px;height:14px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${c};border:1.5px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.5)"></div>`,
+          iconSize:[14,14],iconAnchor:[7,14],className:''
+        });
+        const m=L.marker([r.lat,r.lon],{icon}).addTo(map)
+          .bindPopup(`<div class="pop-name">${esc(r.name)}</div><div class="pop-type" style="color:${c}">${esc(humanType(r.tags,r.name))}</div><div class="pop-dist">${fmtDist(r.dist)}</div><div class="pop-src">Near: ${esc(loc.name)}</div>`,{maxWidth:240});
+        m.on('click',()=>showDetail(r,loc.name));
+        markers.push(m);r._marker=m;
+      });
+    } catch(e){
+      batchResults.push({loc,results:[],error:e.message});
+    }
+
+    // Small delay between requests to be polite to the API
+    if(i<csvLocations.length-1) await sleep(1200);
+  }
+
+  progressBar.style.width='100%';
+  progressLbl.textContent=`Complete — ${csvLocations.length} locations searched`;
+  setStatus(`Batch complete: ${totalBuildings} buildings found across ${csvLocations.length} locations`);
+
+  document.getElementById('csvResCount').innerHTML=`<strong>${totalBuildings}</strong> buildings found`;
+  renderBatchResults();
+  document.getElementById('csvSearchBtn').disabled=false;
+  document.getElementById('exportBtn').disabled=false;
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ── Batch results rendering ────────────────────────────────────────────────
+function renderBatchResults(){
+  const list=document.getElementById('csvResList');
+  if(!batchResults.length){list.innerHTML='<div class="empty">No results yet.</div>';return;}
+
+  const groupBy=document.getElementById('csvGroupSel').value;
+
+  if(groupBy==='location'){
+    list.innerHTML=batchResults.map((br,gi)=>{
+      const count=br.results.length;
+      const errBadge=br.error?` <span style="color:var(--red);font-size:10px">(error)</span>`:'';
+      const subItems=br.results.sort((a,b)=>a.dist-b.dist).map(r=>{
+        const c=CAT_MAP[r.cat];
+        return `<div class="loc-sub-card" onclick="zoomTo(${r.lat},${r.lon},${r.id},'${esc(br.loc.name).replace(/'/g,"\\'")}')">
+          <span class="loc-sub-dot" style="background:${c.color}"></span>
+          <span class="loc-sub-name">${esc(r.name)}</span>
+          <span class="loc-sub-dist">${fmtDist(r.dist)}</span>
+        </div>`;
+      }).join('');
+      return `<div class="loc-group">
+        <div class="loc-group-hdr" onclick="toggleGroup('grp${gi}')">
+          <span class="loc-group-title">${esc(br.loc.name)}${errBadge}</span>
+          <span class="loc-group-meta">${count} building${count!==1?'s':''}</span>
+        </div>
+        <div class="loc-group-body" id="grp${gi}">${subItems||'<div style="padding:10px 12px;font-size:12px;color:var(--text3)">No buildings found</div>'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    // Group by building type
+    const byType={};
+    batchResults.forEach(br=>{
+      br.results.forEach(r=>{
+        if(!byType[r.cat]) byType[r.cat]=[];
+        byType[r.cat].push({r,locName:br.loc.name});
+      });
+    });
+    list.innerHTML=CATS.filter(c=>byType[c.id]).map((c,gi)=>{
+      const items=byType[c.id].sort((a,b)=>a.r.name.localeCompare(b.r.name));
+      return `<div class="loc-group">
+        <div class="loc-group-hdr" onclick="toggleGroup('tgrp${gi}')" style="border-left:3px solid ${c.color}">
+          <span class="loc-group-title" style="color:${c.color}">${c.label}</span>
+          <span class="loc-group-meta">${items.length} found</span>
+        </div>
+        <div class="loc-group-body" id="tgrp${gi}">${items.map(({r,locName})=>`
+          <div class="loc-sub-card" onclick="zoomTo(${r.lat},${r.lon},${r.id},'${esc(locName).replace(/'/g,"\\'")}')">
+            <span class="loc-sub-dot" style="background:${c.color}"></span>
+            <span class="loc-sub-name">${esc(r.name)} <span style="color:var(--text3);font-size:10px">· ${esc(locName)}</span></span>
+            <span class="loc-sub-dist">${fmtDist(r.dist)}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function toggleGroup(id){
+  const el=document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+function zoomTo(lat,lon,id,locName){
+  map.flyTo([lat,lon],16,{duration:.8});
+  // Find result across all batch results
+  for(const br of batchResults){
+    const r=br.results.find(x=>x.id===id);
+    if(r){showDetail(r,locName||br.loc.name);if(r._marker) r._marker.openPopup();break;}
+  }
+}
+
+function renderBatchMap(){
+  // already placed during search; just fit bounds
+  if(markers.length||originMarkers.length) fitAll();
+}
+
+// ── CSV Export ─────────────────────────────────────────────────────────────
+function exportCsv(){
+  if(!batchResults.length){alert('No results to export.');return;}
+  const rows=[['source_name','source_lat','source_lon','building_name','type','distance_mi','address','phone','website','opening_hours','building_lat','building_lon']];
+  batchResults.forEach(br=>{
+    if(!br.results.length){
+      rows.push([br.loc.name,br.loc.lat,br.loc.lon,'(no results)','','','','','','','','']);
+    } else {
+      br.results.forEach(r=>{
+        rows.push([
+          br.loc.name, br.loc.lat, br.loc.lon,
+          r.name, humanType(r.tags), (r.dist/1609.34).toFixed(2),
+          r.addr||'', r.phone||'', r.website||'', r.opening||'',
+          r.lat, r.lon
+        ]);
+      });
+    }
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='public_buildings_results.csv';
+  a.click();
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+buildCatGrid('catGrid',activeCats);
+buildCatGrid('catGridCsv',activeCatsCsv);
+initMap();
+updateRad();
+updateRadCsv();
+</script>
+</body>
+</html>
